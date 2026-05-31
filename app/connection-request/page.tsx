@@ -12,18 +12,24 @@ import { Check, Send, ArrowLeft, ArrowRight, Loader2, Lock, Info } from 'lucide-
 import Notice from '@/components/ui/Notice';
 import PremiumCard from '@/components/ui/PremiumCard';
 
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import { useAuth } from '@/components/auth/AuthProvider';
+import { firestoreHelpers } from '@/lib/firebase/firestore';
+
 function ConnectionRequestContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const providerId = searchParams.get('providerId') || searchParams.get('provider');
   const hasProviderIdParam = !!(searchParams.get('providerId') || searchParams.get('provider'));
 
+  const { currentUser, isFirebaseMode } = useAuth();
+
   const [provider, setProvider] = useState<Provider | null>(null);
-  const [packet, setPacket] = useState<CarePacket | null>(null);
+  const [packet, setPacket] = useState<any | null>(null);
   const [consent, setConsent] = useState(false);
   const [isSent, setIsSent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [sentRequestsList, setSentRequestsList] = useState<Referral[]>([]);
+  const [sentRequestsList, setSentRequestsList] = useState<any[]>([]);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   
   const [shareToggles, setShareToggles] = useState<Record<string, boolean>>({
@@ -36,28 +42,118 @@ function ConnectionRequestContent() {
     safety: true,
   });
 
-  useEffect(() => {
-    // Load sent requests history
-    const allReferrals = storage.getReferrals();
-    const userReferrals = allReferrals.filter(ref => ref.name === 'Member (Self)');
-    setSentRequestsList(userReferrals);
-
-    const cachedPacket = storage.getCarePacket();
-    setPacket(cachedPacket);
-    
-    // Find provider
-    const pId = providerId || storage.getSavedProviders()[0];
-    if (pId) {
-      const p = MOCK_PROVIDERS.find(item => item.id === pId);
-      if (p) {
-        setProvider(p);
-      } else {
-        setProvider(MOCK_PROVIDERS[0]); // Fallback
+  const loadRequests = async () => {
+    if (isFirebaseMode && currentUser) {
+      try {
+        const refs = await firestoreHelpers.getReferralsForPatient(currentUser.uid);
+        const mapped = refs
+          .filter(r => r.status !== 'withdrawn')
+          .map(r => ({
+            id: r.referralId || '',
+            name: 'Member (Self)',
+            route: `Therapy · ${r.providerType === 'solo_provider' ? 'Solo Clinician' : 'Clinic Group'}`,
+            risk: 'low',
+            age: 'Adult',
+            received: r.createdAt && r.createdAt.seconds 
+              ? new Date(r.createdAt.seconds * 1000).toLocaleDateString() 
+              : 'Just now',
+            insurance: 'Coverage matched',
+            summary: 'Care Packet shared',
+            status: r.status,
+            providerId: r.providerId,
+            providerName: r.providerName,
+          }));
+        setSentRequestsList(mapped);
+      } catch (e) {
+        console.error("Error loading referrals: ", e);
       }
     } else {
-      setProvider(MOCK_PROVIDERS[0]); // Default fallback
+      const allReferrals = storage.getReferrals();
+      const userReferrals = allReferrals.filter(ref => ref.name === 'Member (Self)');
+      setSentRequestsList(userReferrals);
     }
-  }, [providerId]);
+  };
+
+  useEffect(() => {
+    async function init() {
+      await loadRequests();
+
+      let activePacket: any = null;
+
+      if (isFirebaseMode && currentUser) {
+        try {
+          const profile = await firestoreHelpers.getPatientProfile(currentUser.uid);
+          if (profile && profile.activeCarePacketId) {
+            activePacket = await firestoreHelpers.getCarePacket(profile.activeCarePacketId);
+          }
+        } catch (e) {
+          console.error("Error loading patient packet from Firestore: ", e);
+        }
+      } else {
+        activePacket = storage.getCarePacket();
+      }
+
+      setPacket(activePacket);
+
+      // Find provider
+      const pId = providerId || (isFirebaseMode ? '' : storage.getSavedProviders()[0]);
+      if (pId) {
+        let found = MOCK_PROVIDERS.find(item => item.id === pId);
+        if (!found && isFirebaseMode) {
+          try {
+            const { solo, org } = await firestoreHelpers.getAllProviders();
+            const s = solo.find(x => x.userId === pId);
+            if (s) {
+              found = {
+                id: s.userId,
+                name: s.displayName,
+                type: 'Solo Clinician',
+                licensure: `${s.licenseType} (${s.licenseState})`,
+                specialty: s.specialties,
+                modality: s.modalities,
+                insurance: s.coverageOptions,
+                slidingScale: s.coverageOptions.some(o => o.toLowerCase().includes('sliding')),
+                nextAvailable: s.availability,
+                sessionCost: '$120 - $180',
+                matchScore: 90,
+                matchReason: 'Compatible provider.'
+              };
+            } else {
+              const o = org.find(x => x.orgId === pId);
+              if (o) {
+                found = {
+                  id: o.orgId,
+                  name: o.organizationName,
+                  type: 'Clinic Group',
+                  licensure: 'Verified Facility',
+                  specialty: o.specialties,
+                  modality: o.modalities,
+                  insurance: o.coverageOptions,
+                  slidingScale: true,
+                  nextAvailable: o.availability,
+                  sessionCost: '$60 - $150',
+                  matchScore: 90,
+                  matchReason: 'Compatible organization.'
+                };
+              }
+            }
+          } catch (e) {
+            console.error("Error loading provider from Firestore: ", e);
+          }
+        }
+        
+        if (found) {
+          setProvider(found);
+        } else {
+          setProvider(MOCK_PROVIDERS[0]); // Fallback
+        }
+      } else {
+        setProvider(MOCK_PROVIDERS[0]); // Default fallback
+      }
+    }
+
+    init();
+  }, [providerId, currentUser, isFirebaseMode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,34 +161,53 @@ function ConnectionRequestContent() {
 
     setSubmitting(true);
     
-    // Simulate API delay
-    setTimeout(() => {
-      // 1. Add to sent connection requests
-      storage.addSentRequest(provider.id);
+    if (isFirebaseMode && currentUser) {
+      try {
+        await firestoreHelpers.createReferral({
+          patientId: currentUser.uid,
+          patientDisplayName: currentUser.displayName || 'Patient',
+          providerType: provider.type === 'Solo Clinician' ? 'solo_provider' : 'provider_org',
+          providerId: provider.id,
+          providerName: provider.name,
+          carePacketId: packet.packetId || '',
+          careRouteId: packet.careRouteId || '',
+          status: 'pending',
+          createdAt: null,
+          updatedAt: null,
+        });
 
-      // 2. Add to mock provider inbox list in localStorage
-      const existingReferrals = storage.getReferrals();
-      const listToUpdate = existingReferrals.length > 0 ? existingReferrals : [...MOCK_REFERRALS];
-      
-      const newReferral: Referral = {
-        id: `r-${Math.floor(1000 + Math.random() * 9000)}`,
-        name: 'Member (Self)',
-        route: `Therapy · ${packet.mainConcerns.join(' / ')}`,
-        risk: 'low',
-        age: 'Adult',
-        received: 'Just now',
-        insurance: provider.insurance[0] || 'Self-pay',
-        summary: packet.shareableSummary,
-        status: 'pending',
-        providerId: provider.id,
-        providerName: provider.name,
-      };
+        setIsSent(true);
+      } catch (e) {
+        console.error("Error creating referral: ", e);
+      } finally {
+        setSubmitting(false);
+      }
+    } else {
+      setTimeout(() => {
+        storage.addSentRequest(provider.id);
+        const existingReferrals = storage.getReferrals();
+        const listToUpdate = existingReferrals.length > 0 ? existingReferrals : [...MOCK_REFERRALS];
+        
+        const newReferral: Referral = {
+          id: `r-${Math.floor(1000 + Math.random() * 9000)}`,
+          name: 'Member (Self)',
+          route: `Therapy · ${packet.mainConcerns.join(' / ')}`,
+          risk: 'low',
+          age: 'Adult',
+          received: 'Just now',
+          insurance: provider.insurance[0] || 'Self-pay',
+          summary: packet.shareableSummary,
+          status: 'pending',
+          providerId: provider.id,
+          providerName: provider.name,
+        };
 
-      storage.setReferrals([newReferral, ...listToUpdate]);
+        storage.setReferrals([newReferral, ...listToUpdate]);
 
-      setSubmitting(false);
-      setIsSent(true);
-    }, 1200);
+        setSubmitting(false);
+        setIsSent(true);
+      }, 1200);
+    }
   };
 
   const handleToggle = (key: string) => {
@@ -108,24 +223,34 @@ function ConnectionRequestContent() {
       setTimeout(() => setToastMsg(null), 3000);
     };
 
-    const handleWithdraw = (id: string) => {
+    const handleWithdraw = async (id: string) => {
       if (!confirm('Are you sure you want to withdraw this connection request? The provider will no longer see your Care Packet.')) {
         return;
       }
-      const allReferrals = storage.getReferrals();
-      const updated = allReferrals.filter(r => r.id !== id);
-      storage.setReferrals(updated);
-      setSentRequestsList(updated.filter(r => r.name === 'Member (Self)'));
+      if (isFirebaseMode) {
+        try {
+          await firestoreHelpers.deleteReferral(id);
+          await loadRequests();
+          showToast('Connection request withdrawn.');
+        } catch (e) {
+          console.error("Error withdrawing referral: ", e);
+        }
+      } else {
+        const allReferrals = storage.getReferrals();
+        const updated = allReferrals.filter(r => r.id !== id);
+        storage.setReferrals(updated);
+        setSentRequestsList(updated.filter(r => r.name === 'Member (Self)'));
 
-      // Also remove providerId from wisecare.sentRequests so they can send it again
-      const targetRef = allReferrals.find(r => r.id === id);
-      if (targetRef && targetRef.providerId) {
-        const savedRequests = storage.getSentRequests();
-        const updatedRequests = savedRequests.filter(pid => pid !== targetRef.providerId);
-        storage.setStorageItem('wisecare.sentRequests', updatedRequests);
+        // Also remove providerId from wisecare.sentRequests so they can send it again
+        const targetRef = allReferrals.find(r => r.id === id);
+        if (targetRef && targetRef.providerId) {
+          const savedRequests = storage.getSentRequests();
+          const updatedRequests = savedRequests.filter(pid => pid !== targetRef.providerId);
+          storage.setStorageItem('wisecare.sentRequests', updatedRequests);
+        }
+
+        showToast('Connection request withdrawn.');
       }
-
-      showToast('Connection request withdrawn.');
     };
 
     const handleSchedule = (providerName: string) => {
@@ -166,7 +291,7 @@ function ConnectionRequestContent() {
           <div className="conn-list">
             {sentRequestsList.map(req => {
               const pName = req.providerName || 'Provider';
-              const initials = pName.split(/[ \-\u2014]+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('');
+              const initials = pName.split(/[ \-\u2014]+/).filter(Boolean).slice(0, 2).map((w: string) => w[0]).join('');
               const status = req.status || 'pending';
 
               return (
@@ -363,7 +488,7 @@ function ConnectionRequestContent() {
                 <div>
                   <div className="label" style={{ fontWeight: 500, color: 'var(--fg)' }}>Daily impact</div>
                   <div style={{ fontSize: '12.5px', color: 'var(--muted)', marginTop: '2px' }}>
-                    {packet?.dailyLifeImpact?.slice(0, 3).map(i => i.split(':')[0]).join(', ') || 'Sleep, concentration, mood'}
+                    {packet?.dailyLifeImpact?.slice(0, 3).map((i: string) => i.split(':')[0]).join(', ') || 'Sleep, concentration, mood'}
                   </div>
                 </div>
                 <button 
@@ -539,7 +664,7 @@ function ConnectionRequestContent() {
       </div>
 
       <Notice variant="standard" title="Security & Privacy" className="mt-6">
-        For this prototype, your information is stored locally in this browser session. Nothing is shared unless you explicitly choose to send a simulated connection request. Your employer or university will never receive notice of this referral.
+        This is a demo prototype. Do not enter real medical or personal health information. Wise Care does not diagnose, provide therapy, prescribe medication, or replace a licensed professional.
       </Notice>
     </div>
   );
@@ -547,15 +672,17 @@ function ConnectionRequestContent() {
 
 export default function ConnectionRequestPage() {
   return (
-    <AppShell title="Connection request" crumbs={['Care', 'Care packet', 'Send request']}>
-      <Suspense fallback={
-        <div className="flex flex-col items-center justify-center py-20 gap-4">
-          <Loader2 className="w-10 h-10 text-wise-teal spin" style={{ animation: 'spin 1s linear infinite' }} />
-          <p className="text-sm text-wise-muted">Loading connection portal...</p>
-        </div>
-      }>
-        <ConnectionRequestContent />
-      </Suspense>
-    </AppShell>
+    <ProtectedRoute allowedRoles={['patient']}>
+      <AppShell title="Connection request" crumbs={['Care', 'Care packet', 'Send request']}>
+        <Suspense fallback={
+          <div className="flex flex-col items-center justify-center py-20 gap-4">
+            <Loader2 className="w-10 h-10 text-wise-teal spin" style={{ animation: 'spin 1s linear infinite' }} />
+            <p className="text-sm text-wise-muted">Loading connection portal...</p>
+          </div>
+        }>
+          <ConnectionRequestContent />
+        </Suspense>
+      </AppShell>
+    </ProtectedRoute>
   );
 }

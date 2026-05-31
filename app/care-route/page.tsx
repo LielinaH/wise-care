@@ -24,21 +24,62 @@ import {
   Info
 } from 'lucide-react';
 
-export default function CareRoutePage() {
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import { useAuth } from '@/components/auth/AuthProvider';
+import { firestoreHelpers } from '@/lib/firebase/firestore';
+
+function CareRoutePageContent() {
   const router = useRouter();
+  const { currentUser, isFirebaseMode } = useAuth();
   const [careRoute, setCareRoute] = useState<CareRouteResult | null>(null);
   const [intake, setIntake] = useState<Partial<IntakeAnswers>>({});
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const route = storage.getCareRoute();
-    const answers = storage.getIntake();
-    setCareRoute(route);
-    setIntake(answers);
+    async function loadData() {
+      if (isFirebaseMode) {
+        if (!currentUser) return;
+        try {
+          const profile = await firestoreHelpers.getPatientProfile(currentUser.uid);
+          if (profile) {
+            setIntake(profile.intakeAnswers || {});
+            if (profile.activeCareRouteId) {
+              const route = await firestoreHelpers.getCareRoute(profile.activeCareRouteId);
+              setCareRoute(route as any);
+            } else {
+              router.push('/dashboard');
+            }
+          } else {
+            router.push('/dashboard');
+          }
+        } catch (e) {
+          console.error("Error loading care route from Firestore:", e);
+        }
+      } else {
+        const route = storage.getCareRoute();
+        const answers = storage.getIntake();
+        setCareRoute(route);
+        setIntake(answers);
 
-    if (!route) {
-      router.push('/dashboard');
+        if (!route) {
+          router.push('/dashboard');
+        }
+      }
+      setLoading(false);
     }
-  }, [router]);
+
+    loadData();
+  }, [router, currentUser, isFirebaseMode]);
+
+  if (loading) {
+    return (
+      <AppShell title="Care route" crumbs={['Care', 'Care route']}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 0', gap: '16px' }}>
+          <span style={{ color: 'var(--muted)' }}>Loading care route...</span>
+        </div>
+      </AppShell>
+    );
+  }
 
   if (!careRoute) return null;
 
@@ -331,7 +372,7 @@ export default function CareRoutePage() {
           <div>
             <strong>Important.</strong> Wise Care is a navigation tool, not a clinical service. The recommendations above are starting points for a conversation with a licensed professional, they are not a diagnosis, treatment plan, or prescription. If your symptoms worsen, please reach out to a clinician or, in a crisis, call or text <strong>988</strong>.
             <div className="text-[12px] text-wise-muted mt-2">
-              For this prototype, your information is stored locally in this browser session. Nothing is shared unless you explicitly choose to send a simulated connection request.
+              This is a demo prototype. Do not enter real medical or personal health information. Wise Care does not diagnose, provide therapy, prescribe medication, or replace a licensed professional.
             </div>
           </div>
         </div>
@@ -351,5 +392,13 @@ export default function CareRoutePage() {
 
       </div>
     </AppShell>
+  );
+}
+
+export default function CareRoutePage() {
+  return (
+    <ProtectedRoute allowedRoles={['patient']}>
+      <CareRoutePageContent />
+    </ProtectedRoute>
   );
 }

@@ -2,11 +2,12 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import AppShell from '@/components/layout/AppShell';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import { useAuth } from '@/components/auth/AuthProvider';
+import { firestoreHelpers } from '@/lib/firebase/firestore';
 import FallbackBanner from '@/components/wise-care/FallbackBanner';
-import PremiumCard from '@/components/ui/PremiumCard';
-import Badge from '@/components/ui/Badge';
-import Notice from '@/components/ui/Notice';
 import { storage } from '@/lib/storage';
 import { IntakeAnswers, CareRouteResult, Provider } from '@/lib/types';
 import { MOCK_PROVIDERS } from '@/lib/data/mockProviders';
@@ -17,47 +18,89 @@ import {
   Bell,
   Shield,
   Info,
-  AlertTriangle,
-  ArrowRight
+  ArrowRight,
+  Loader2
 } from 'lucide-react';
 
-export default function UserDashboard() {
+function UserDashboardContent() {
+  const router = useRouter();
+  const { currentUser, isFirebaseMode } = useAuth();
+  
   const [intake, setIntake] = useState<Partial<IntakeAnswers>>({});
   const [careRoute, setCareRoute] = useState<CareRouteResult | null>(null);
   const [savedProviderIds, setSavedProviderIds] = useState<string[]>([]);
   const [sentRequests, setSentRequests] = useState<string[]>([]);
   const [matched, setMatched] = useState<Provider[]>([]);
   const [hasCompletedFollowUp, setHasCompletedFollowUp] = useState(false);
+  const [loadingData, setLoadingData] = useState(true);
 
   useEffect(() => {
-    // Load local storage values on client side
-    const answers = storage.getIntake();
-    const route = storage.getCareRoute();
-    const saved = storage.getSavedProviders();
-    const requests = storage.getSentRequests();
+    async function loadDashboardData() {
+      if (!currentUser) return;
 
-    // Check if follow-up check-in has been completed
-    const followup = storage.getStorageItem<any>('wisecare.followup', null);
-    if (followup && (followup.contacted || followup.scheduled || followup.barrier)) {
-      setHasCompletedFollowUp(true);
+      if (isFirebaseMode) {
+        try {
+          const profile = await firestoreHelpers.getPatientProfile(currentUser.uid);
+          if (profile) {
+            const answers = profile.intakeAnswers || {};
+            setIntake(answers);
+            setSavedProviderIds(profile.savedProviderIds || []);
+
+            if (profile.activeCareRouteId) {
+              const route = await firestoreHelpers.getCareRoute(profile.activeCareRouteId);
+              setCareRoute(route as any);
+            }
+
+            // Load referrals
+            const refs = await firestoreHelpers.getReferralsForPatient(currentUser.uid);
+            const activeRefs = refs.filter(r => r.status !== 'withdrawn');
+            setSentRequests(activeRefs.map(r => r.providerId));
+
+            // Load follow-ups
+            const followups = await firestoreHelpers.getFollowUpsForPatient(currentUser.uid);
+            if (followups.length > 0) {
+              setHasCompletedFollowUp(true);
+            }
+
+            // Compute matches
+            if (answers.concerns && answers.concerns.length > 0) {
+              const results = matchProviders(answers, MOCK_PROVIDERS);
+              setMatched(results.slice(0, 3));
+            }
+          }
+        } catch (e) {
+          console.error("Error loading patient dashboard data: ", e);
+        }
+      } else {
+        // Fallback local storage code
+        const answers = storage.getIntake();
+        const route = storage.getCareRoute();
+        const saved = storage.getSavedProviders();
+        const requests = storage.getSentRequests();
+
+        // Check if follow-up check-in has been completed
+        const followup = storage.getStorageItem<any>('wisecare.followup', null);
+        if (followup && (followup.contacted || followup.scheduled || followup.barrier)) {
+          setHasCompletedFollowUp(true);
+        }
+
+        setIntake(answers);
+        setCareRoute(route);
+        setSavedProviderIds(saved);
+        setSentRequests(requests);
+
+        if (answers.concerns && answers.concerns.length > 0) {
+          const results = matchProviders(answers as IntakeAnswers, MOCK_PROVIDERS);
+          setMatched(results.slice(0, 3));
+        }
+      }
+      setLoadingData(false);
     }
 
-    setIntake(answers);
-    setCareRoute(route);
-    setSavedProviderIds(saved);
-    setSentRequests(requests);
-
-    if (answers.concerns && answers.concerns.length > 0) {
-      const results = matchProviders(answers as IntakeAnswers, MOCK_PROVIDERS);
-      setMatched(results.slice(0, 3));
-    }
-  }, []);
+    loadDashboardData();
+  }, [currentUser, isFirebaseMode]);
 
   const hasCompletedIntake = intake.concerns && intake.concerns.length > 0 && careRoute;
-
-  const handleSignOut = () => {
-    storage.setRole('user');
-  };
 
   const dashboardActions = (
     <>
@@ -67,11 +110,19 @@ export default function UserDashboard() {
       >
         <Bell className="w-4 h-4" />
       </button>
-      <Link href="/signin" onClick={handleSignOut} className="btn btn-ghost btn-sm">
-        Sign out
-      </Link>
     </>
   );
+
+  if (loadingData) {
+    return (
+      <AppShell title="Dashboard" crumbs={['Care', 'Dashboard']} actions={dashboardActions}>
+        <div className="flex flex-col items-center justify-center py-20 gap-4">
+          <Loader2 className="w-8 h-8 text-wise-teal animate-spin" />
+          <p className="text-sm text-wise-muted font-medium">Loading patient workspace...</p>
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell title="Dashboard" crumbs={['Care', 'Dashboard']} actions={dashboardActions}>
@@ -142,7 +193,7 @@ export default function UserDashboard() {
                   ) : intake.safety === 'immediate' ? (
                     <><strong style={{ color: 'var(--danger)' }}>Crisis flag triggered.</strong> Crisis/hotline support routing is priority.</>
                   ) : (
-                    <><strong>Private & local.</strong> Your information is stored locally in this browser session. Nothing is shared unless you explicitly choose to send a simulated connection request.</>
+                    <><strong>Private &amp; local.</strong> Your information is stored in a Firebase-backed demo database. Do not enter real medical or personal health information. Nothing is shared with a provider unless you explicitly send a simulated connection request.</>
                   )}
                 </span>
               </div>
@@ -366,11 +417,19 @@ export default function UserDashboard() {
           <div>
             <strong style={{ color: 'var(--fg)' }}>A reminder.</strong> Wise Care helps with navigation and preparation. It does not diagnose, treat, or prescribe. If you ever feel in immediate danger, call or text <strong>988</strong> or call <strong>911</strong>.
             <div className="text-[12px] text-wise-muted mt-2">
-              For this prototype, your information is stored locally in this browser session. Nothing is shared unless you explicitly choose to send a simulated connection request.
+              For this prototype, your information is stored in a Firebase-backed demo database. Do not enter real medical or personal health information. Nothing is shared with a provider unless you explicitly send a simulated connection request.
             </div>
           </div>
         </div>
       </div>
     </AppShell>
+  );
+}
+
+export default function UserDashboard() {
+  return (
+    <ProtectedRoute allowedRoles={['patient']}>
+      <UserDashboardContent />
+    </ProtectedRoute>
   );
 }

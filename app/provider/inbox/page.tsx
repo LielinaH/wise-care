@@ -10,38 +10,86 @@ import { Check, Info, Lock, Clock, AlertTriangle, AlertCircle, Sparkles, ArrowRi
 import Badge from '@/components/ui/Badge';
 import Notice from '@/components/ui/Notice';
 
-export default function ProviderInbox() {
-  const [referrals, setReferrals] = useState<Referral[]>([]);
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import { useAuth } from '@/components/auth/AuthProvider';
+import { firestoreHelpers } from '@/lib/firebase/firestore';
+
+function ProviderInboxContent() {
+  const { currentUser, isFirebaseMode } = useAuth();
+  const [referrals, setReferrals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string>('');
   const [filter, setFilter] = useState<'all' | 'new' | 'high'>('all');
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
-  useEffect(() => {
-    const stored = storage.getReferrals();
-    if (stored.length > 0) {
-      setReferrals(stored);
-      setSelectedId(stored[0].id);
+  const loadInbox = async () => {
+    if (!currentUser) return;
+
+    if (isFirebaseMode) {
+      try {
+        const refs = await firestoreHelpers.getReferralsForProvider(currentUser.uid);
+        const activeRefs = refs.filter(r => r.status !== 'withdrawn');
+        
+        // Map to client schema
+        const mapped = activeRefs.map(r => ({
+          id: r.referralId || '',
+          name: r.patientDisplayName || 'Member (Self)',
+          route: `Therapy · ${r.providerType === 'solo_provider' ? 'Solo Clinician' : 'Clinic Group'}`,
+          risk: 'low',
+          age: 'Adult',
+          received: r.createdAt && r.createdAt.seconds 
+            ? new Date(r.createdAt.seconds * 1000).toLocaleDateString()
+            : 'Just now',
+          insurance: 'Coverage matched',
+          summary: 'Care Packet shared',
+          status: r.status,
+          providerId: r.providerId,
+          providerName: r.providerName,
+        }));
+
+        setReferrals(mapped);
+        if (mapped.length > 0) {
+          setSelectedId(mapped[0].id);
+        }
+      } catch (e) {
+        console.error("Error loading referrals from Firestore:", e);
+      }
     } else {
-      setReferrals(MOCK_REFERRALS);
-      storage.setReferrals(MOCK_REFERRALS);
-      if (MOCK_REFERRALS.length > 0) {
-        setSelectedId(MOCK_REFERRALS[0].id);
+      const stored = storage.getReferrals();
+      const activeRefs = stored.filter(r => r.status !== 'withdrawn');
+      const list = activeRefs.length > 0 ? activeRefs : MOCK_REFERRALS;
+      setReferrals(list);
+      if (list.length > 0) {
+        setSelectedId(list[0].id);
       }
     }
     setLoading(false);
-  }, []);
+  };
 
-  const handleAction = (id: string, action: 'accepted' | 'declined' | 'waitlisted' | 'info-requested') => {
-    const updated = referrals.map(ref => {
-      if (ref.id === id) {
-        return { ...ref, status: (action === 'info-requested' ? 'pending' : action) } as Referral;
+  useEffect(() => {
+    loadInbox();
+  }, [currentUser, isFirebaseMode]);
+
+  const handleAction = async (id: string, action: 'accepted' | 'declined' | 'waitlisted' | 'info-requested') => {
+    const nextStatus = action === 'info-requested' ? 'pending' : action;
+
+    if (isFirebaseMode) {
+      try {
+        await firestoreHelpers.updateReferralStatus(id, nextStatus as any);
+        await loadInbox();
+      } catch (e) {
+        console.error("Error updating referral status in Firestore:", e);
       }
-      return ref;
-    });
-
-    setReferrals(updated);
-    storage.setReferrals(updated);
+    } else {
+      const updated = referrals.map(ref => {
+        if (ref.id === id) {
+          return { ...ref, status: nextStatus } as Referral;
+        }
+        return ref;
+      });
+      setReferrals(updated);
+      storage.setReferrals(updated);
+    }
 
     let actionText = '';
     if (action === 'accepted') actionText = 'Referral accepted · scheduling invite sent';
@@ -52,15 +100,24 @@ export default function ProviderInbox() {
     showToast(actionText);
   };
 
-  const handleReset = (id: string) => {
-    const updated = referrals.map(ref => {
-      if (ref.id === id) {
-        return { ...ref, status: 'pending' as const };
+  const handleReset = async (id: string) => {
+    if (isFirebaseMode) {
+      try {
+        await firestoreHelpers.updateReferralStatus(id, 'pending');
+        await loadInbox();
+      } catch (e) {
+        console.error("Error resetting referral in Firestore:", e);
       }
-      return ref;
-    });
-    setReferrals(updated);
-    storage.setReferrals(updated);
+    } else {
+      const updated = referrals.map(ref => {
+        if (ref.id === id) {
+          return { ...ref, status: 'pending' as const };
+        }
+        return ref;
+      });
+      setReferrals(updated);
+      storage.setReferrals(updated);
+    }
     showToast('Referral status reset to pending.');
   };
 
@@ -71,7 +128,7 @@ export default function ProviderInbox() {
 
   const filteredReferrals = referrals.filter(r => {
     if (filter === 'all') return true;
-    if (filter === 'new') return /hr|days/.test(r.received || '') && !/7 days|14 days/.test(r.received || '');
+    if (filter === 'new') return /hr|days|Today/.test(r.received || '') && !/7 days|14 days/.test(r.received || '');
     if (filter === 'high') return r.risk === 'high' || r.risk === 'medium';
     return true;
   });
@@ -300,10 +357,18 @@ export default function ProviderInbox() {
         {/* Prototype Disclaimer */}
         <div className="mt-6">
           <Notice variant="standard">
-            For this prototype, your information is stored locally in this browser session. Nothing is shared unless you explicitly choose to send a simulated connection request.
+            This is a demo prototype. Do not enter real medical or personal health information. Wise Care does not claim HIPAA compliance, perform real credential verification, or store production medical records.
           </Notice>
         </div>
       </div>
     </AppShell>
+  );
+}
+
+export default function ProviderInboxPage() {
+  return (
+    <ProtectedRoute allowedRoles={['solo_provider', 'provider_org']}>
+      <ProviderInboxContent />
+    </ProtectedRoute>
   );
 }

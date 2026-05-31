@@ -18,45 +18,119 @@ import {
   ArrowRight
 } from 'lucide-react';
 
-export default function CarePacketPage() {
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import { useAuth } from '@/components/auth/AuthProvider';
+import { firestoreHelpers } from '@/lib/firebase/firestore';
+
+function CarePacketPageContent() {
   const router = useRouter();
+  const { currentUser, isFirebaseMode } = useAuth();
   const [packet, setPacket] = useState<CarePacket | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [checklistState, setChecklistState] = useState<boolean[]>([]);
 
   useEffect(() => {
-    const route = storage.getCareRoute();
-    const intake = storage.getIntake();
-    const cachedPacket = storage.getCarePacket();
+    async function loadData() {
+      if (isFirebaseMode) {
+        if (!currentUser) return;
+        try {
+          const profile = await firestoreHelpers.getPatientProfile(currentUser.uid);
+          if (!profile || !profile.activeCareRouteId) {
+            router.push('/dashboard');
+            return;
+          }
+          
+          if (profile.activeCarePacketId) {
+            const cachedPacket = await firestoreHelpers.getCarePacket(profile.activeCarePacketId);
+            if (cachedPacket) {
+              setPacket(cachedPacket as any);
+              setChecklistState(new Array(cachedPacket.nextStepChecklist.length).fill(false));
+              setLoading(false);
+              return;
+            }
+          }
 
-    if (!intake.concerns || !route) {
-      router.push('/dashboard');
-      return;
+          // Generate if route exists but packet does not
+          const route = await firestoreHelpers.getCareRoute(profile.activeCareRouteId);
+          if (route && profile.intakeAnswers) {
+            await generatePacket(profile.intakeAnswers, route);
+          } else {
+            router.push('/dashboard');
+          }
+        } catch (e) {
+          console.error("Error loading care packet from Firestore:", e);
+          router.push('/dashboard');
+        }
+      } else {
+        const route = storage.getCareRoute();
+        const intake = storage.getIntake();
+        const cachedPacket = storage.getCarePacket();
+
+        if (!intake.concerns || !route) {
+          router.push('/dashboard');
+          return;
+        }
+
+        if (cachedPacket) {
+          setPacket(cachedPacket);
+          setChecklistState(new Array(cachedPacket.nextStepChecklist.length).fill(false));
+        } else {
+          generatePacket(intake as IntakeAnswers, route);
+        }
+      }
+      setLoading(false);
     }
 
-    if (cachedPacket) {
-      setPacket(cachedPacket);
-      setChecklistState(new Array(cachedPacket.nextStepChecklist.length).fill(false));
-    } else {
-      generatePacket(intake as IntakeAnswers, route);
-    }
-  }, [router]);
+    loadData();
+  }, [router, currentUser, isFirebaseMode]);
 
   const generatePacket = async (intake: IntakeAnswers, route: CareRouteResult) => {
     setLoading(true);
     try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (isFirebaseMode && currentUser) {
+        const token = await currentUser.getIdToken();
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const res = await fetch('/api/ai/care-packet', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ intake, careRoute: route }),
       });
       if (res.ok) {
         const data = await res.json();
         setPacket(data);
-        storage.setCarePacket(data);
         setChecklistState(new Array(data.nextStepChecklist.length).fill(false));
+        
+        if (isFirebaseMode && currentUser) {
+          const packetId = await firestoreHelpers.createCarePacket({
+            patientId: currentUser.uid,
+            careRouteId: (route as any).routeId || '',
+            mainConcerns: data.mainConcerns,
+            timeline: data.timeline,
+            dailyLifeImpact: data.dailyLifeImpact,
+            careGoals: data.careGoals,
+            questionsToAskProvider: data.questionsToAskProvider,
+            materialsToPrepare: data.materialsToPrepare,
+            insurancePaymentNotes: data.insurancePaymentNotes,
+            suggestedOutreachMessage: data.suggestedOutreachMessage,
+            shareableSummary: data.shareableSummary,
+            nextStepChecklist: data.nextStepChecklist,
+            selectedFields: data.selectedFields || {},
+            isFallback: !!data.isFallback,
+            createdAt: null,
+            updatedAt: null,
+          });
+
+          await firestoreHelpers.setPatientProfile(currentUser.uid, {
+            activeCarePacketId: packetId,
+          });
+        } else {
+          storage.setCarePacket(data);
+        }
       } else {
         throw new Error('Failed to generate Care Packet');
       }
@@ -325,11 +399,19 @@ export default function CarePacketPage() {
           <div>
             <strong>This is not a clinical record.</strong> A Care Packet is a starting point for your first conversation. Your provider will form their own assessment, which is what we want, because Wise Care does not replace clinical judgment.
             <div className="text-[12px] text-wise-muted mt-2">
-              For this prototype, your information is stored locally in this browser session. Nothing is shared unless you explicitly choose to send a simulated connection request.
+              This is a demo prototype. Do not enter real medical or personal health information. Wise Care does not diagnose, provide therapy, prescribe medication, or replace a licensed professional.
             </div>
           </div>
         </div>
       </div>
     </AppShell>
+  );
+}
+
+export default function CarePacketPage() {
+  return (
+    <ProtectedRoute allowedRoles={['patient']}>
+      <CarePacketPageContent />
+    </ProtectedRoute>
   );
 }

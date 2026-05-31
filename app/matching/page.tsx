@@ -12,11 +12,17 @@ import ProviderCard from '@/components/ui/ProviderCard';
 import PremiumCard from '@/components/ui/PremiumCard';
 import Notice from '@/components/ui/Notice';
 
-export default function ProviderMatchingPage() {
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import { useAuth } from '@/components/auth/AuthProvider';
+import { firestoreHelpers } from '@/lib/firebase/firestore';
+
+function ProviderMatchingPageContent() {
+  const { currentUser, isFirebaseMode } = useAuth();
   const [intake, setIntake] = useState<Partial<IntakeAnswers>>({});
   const [matches, setMatches] = useState<Provider[]>([]);
   const [savedIds, setSavedIds] = useState<string[]>([]);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const [activeFilters, setActiveFilters] = useState({
     type: 'all',
@@ -27,29 +33,116 @@ export default function ProviderMatchingPage() {
   const [sortBy, setSortBy] = useState('best');
 
   useEffect(() => {
-    const answers = storage.getIntake();
-    const saved = storage.getSavedProviders();
-    setIntake(answers);
-    setSavedIds(saved);
+    async function loadProviders() {
+      let activeSaved: string[] = [];
+      let currentIntake: Partial<IntakeAnswers> = {};
 
-    if (answers.concerns && answers.concerns.length > 0) {
-      const results = matchProviders(answers as IntakeAnswers, MOCK_PROVIDERS);
-      setMatches(results);
-    } else {
-      // If intake not done, show all unscored
-      setMatches(MOCK_PROVIDERS.map(p => ({ ...p, matchScore: 0, matchReason: 'Please complete intake to generate score details.' })));
+      if (isFirebaseMode && currentUser) {
+        try {
+          const profile = await firestoreHelpers.getPatientProfile(currentUser.uid);
+          if (profile) {
+            currentIntake = profile.intakeAnswers || {};
+            activeSaved = profile.savedProviderIds || [];
+          }
+          
+          // Fetch providers from Firestore
+          const { solo, org } = await firestoreHelpers.getAllProviders();
+          
+          const dbProviders: Provider[] = [];
+          solo.forEach(s => {
+            // Only show verified providers
+            if (s.verificationStatus === 'verified') {
+              dbProviders.push({
+                id: s.userId,
+                name: s.displayName,
+                type: 'Solo Clinician',
+                licensure: `${s.licenseType} (${s.licenseState})`,
+                specialty: s.specialties,
+                modality: s.modalities,
+                insurance: s.coverageOptions,
+                slidingScale: s.coverageOptions.some(o => o.toLowerCase().includes('sliding') || o.toLowerCase().includes('scale') || o.toLowerCase().includes('self')),
+                nextAvailable: s.availability || '1-2 weeks',
+                sessionCost: '$120 - $180',
+                matchScore: 0,
+                matchReason: ''
+              });
+            }
+          });
+
+          org.forEach(o => {
+            // Only show verified organization clinics
+            if (o.verificationStatus === 'verified') {
+              dbProviders.push({
+                id: o.orgId,
+                name: o.organizationName,
+                type: 'Clinic Group',
+                licensure: 'Verified Facility',
+                specialty: o.specialties,
+                modality: o.modalities,
+                insurance: o.coverageOptions,
+                slidingScale: o.coverageOptions.some(cov => cov.toLowerCase().includes('sliding') || cov.toLowerCase().includes('scale') || cov.toLowerCase().includes('self')),
+                nextAvailable: o.availability || 'Within a week',
+                sessionCost: '$60 - $150',
+                matchScore: 0,
+                matchReason: ''
+              });
+            }
+          });
+
+          // Merge mock providers if Firestore has no verified providers
+          const allProviders = dbProviders.length > 0 ? dbProviders : MOCK_PROVIDERS;
+
+          setIntake(currentIntake);
+          setSavedIds(activeSaved);
+
+          if (currentIntake.concerns && currentIntake.concerns.length > 0) {
+            const results = matchProviders(currentIntake as IntakeAnswers, allProviders);
+            setMatches(results);
+          } else {
+            setMatches(allProviders.map(p => ({ ...p, matchScore: 0, matchReason: 'Please complete intake to generate score details.' })));
+          }
+        } catch (e) {
+          console.error("Error loading matching data: ", e);
+        }
+      } else {
+        currentIntake = storage.getIntake();
+        activeSaved = storage.getSavedProviders();
+        setIntake(currentIntake);
+        setSavedIds(activeSaved);
+
+        if (currentIntake.concerns && currentIntake.concerns.length > 0) {
+          const results = matchProviders(currentIntake as IntakeAnswers, MOCK_PROVIDERS);
+          setMatches(results);
+        } else {
+          setMatches(MOCK_PROVIDERS.map(p => ({ ...p, matchScore: 0, matchReason: 'Please complete intake to generate score details.' })));
+        }
+      }
+      setLoading(false);
     }
-  }, []);
 
-  const handleSaveToggle = (id: string, name: string) => {
+    loadProviders();
+  }, [currentUser, isFirebaseMode]);
+
+  const handleSaveToggle = async (id: string, name: string) => {
     const isSaved = savedIds.includes(id);
+    let updatedSavedIds = [...savedIds];
     if (isSaved) {
-      storage.unsaveProvider(id);
-      setSavedIds(prev => prev.filter(item => item !== id));
+      updatedSavedIds = updatedSavedIds.filter(item => item !== id);
+      if (isFirebaseMode && currentUser) {
+        await firestoreHelpers.setPatientProfile(currentUser.uid, { savedProviderIds: updatedSavedIds });
+      } else {
+        storage.unsaveProvider(id);
+      }
+      setSavedIds(updatedSavedIds);
       showToast(`Removed ${name} from your care plan.`);
     } else {
-      storage.saveProvider(id);
-      setSavedIds(prev => [...prev, id]);
+      updatedSavedIds = [...updatedSavedIds, id];
+      if (isFirebaseMode && currentUser) {
+        await firestoreHelpers.setPatientProfile(currentUser.uid, { savedProviderIds: updatedSavedIds });
+      } else {
+        storage.saveProvider(id);
+      }
+      setSavedIds(updatedSavedIds);
       showToast(`Saved ${name} to your care plan!`);
     }
   };
@@ -296,7 +389,7 @@ export default function ProviderMatchingPage() {
               <div>
                 <strong style={{ color: 'var(--fg)' }}>A note on these listings.</strong> Names, costs, and availability are simulated for this prototype. In production, listings would refresh from verified provider directories and your insurance plan.
                 <div className="text-[12px] text-wise-muted mt-2">
-                  For this prototype, your information is stored locally in this browser session. Nothing is shared unless you explicitly choose to send a simulated connection request.
+                  This is a demo prototype. Do not enter real medical or personal health information. Wise Care does not diagnose, provide therapy, prescribe medication, or replace a licensed professional.
                 </div>
               </div>
             </div>
@@ -306,5 +399,13 @@ export default function ProviderMatchingPage() {
 
       </div>
     </AppShell>
+  );
+}
+
+export default function ProviderMatchingPage() {
+  return (
+    <ProtectedRoute allowedRoles={['patient']}>
+      <ProviderMatchingPageContent />
+    </ProtectedRoute>
   );
 }

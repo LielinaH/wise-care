@@ -1,0 +1,113 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // --- Authentication Helpers ---
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isAuthenticated() && request.auth.uid == uid;
+    }
+
+    // --- Role Helpers ---
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function hasRole(role) {
+      return isAuthenticated() && getUserData().role == role;
+    }
+
+    // --- Users Collection ---
+    match /users/{uid} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(uid);
+    }
+
+    // --- Patients Collection ---
+    match /patients/{uid} {
+      allow read: if isAuthenticated() && (isOwner(uid) || hasRole('solo_provider') || hasRole('provider_org') || hasRole('admin'));
+      allow write: if isOwner(uid);
+    }
+
+    // --- Solo Providers Collection ---
+    match /soloProviders/{uid} {
+      allow read: if true; // Public directories readable by patients for matchmaking
+      allow write: if isOwner(uid);
+    }
+
+    // --- Provider Organizations Collection ---
+    match /providerOrganizations/{orgId} {
+      allow read: if true; // Public directories readable by patients for matchmaking
+      // Creation or update allowed if owner matches authenticated user
+      allow write: if isAuthenticated() && (
+        resource == null || 
+        resource.data.ownerUserId == request.auth.uid || 
+        request.resource.data.ownerUserId == request.auth.uid
+      );
+    }
+
+    // --- Care Routes Collection ---
+    match /careRoutes/{routeId} {
+      allow read: if isAuthenticated() && (
+        resource.data.patientId == request.auth.uid || 
+        hasRole('solo_provider') || 
+        hasRole('provider_org') || 
+        hasRole('admin')
+      );
+      allow create: if isAuthenticated() && request.resource.data.patientId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && resource.data.patientId == request.auth.uid;
+    }
+
+    // --- Care Packets Collection ---
+    match /carePackets/{packetId} {
+      allow read: if isAuthenticated() && (
+        resource.data.patientId == request.auth.uid || 
+        hasRole('solo_provider') || 
+        hasRole('provider_org') || 
+        hasRole('admin')
+      );
+      allow create: if isAuthenticated() && request.resource.data.patientId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && resource.data.patientId == request.auth.uid;
+    }
+
+    // --- Referrals Collection ---
+    match /referrals/{referralId} {
+      allow read: if isAuthenticated() && (
+        resource.data.patientId == request.auth.uid || 
+        resource.data.providerId == request.auth.uid || 
+        hasRole('admin')
+      );
+      allow create: if isAuthenticated() && request.resource.data.patientId == request.auth.uid;
+      // Allow updates to change referral status (either by provider or patient)
+      allow update: if isAuthenticated() && (
+        resource.data.patientId == request.auth.uid || 
+        resource.data.providerId == request.auth.uid
+      );
+      allow delete: if false; // Soft deletes / withdrawal are updates
+    }
+
+    // --- Follow-ups Collection ---
+    match /followUps/{followUpId} {
+      allow read: if isAuthenticated() && (
+        resource.data.patientId == request.auth.uid || 
+        hasRole('admin')
+      );
+      allow create: if isAuthenticated() && request.resource.data.patientId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && resource.data.patientId == request.auth.uid;
+    }
+
+    // --- Provider Verification Requests Collection ---
+    match /providerVerificationRequests/{requestId} {
+      allow read: if isAuthenticated() && (
+        resource.data.providerId == request.auth.uid || 
+        hasRole('admin')
+      );
+      allow create: if isAuthenticated() && request.resource.data.providerId == request.auth.uid;
+      allow update: if isAuthenticated() && hasRole('admin');
+      allow delete: if false;
+    }
+  }
+}

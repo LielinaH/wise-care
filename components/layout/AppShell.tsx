@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { 
   Home, 
   ClipboardList, 
@@ -18,9 +18,10 @@ import {
   ArrowLeft, 
   Menu, 
   X,
-  Lock
+  LogOut,
+  Info
 } from 'lucide-react';
-import { storage } from '@/lib/storage';
+import { useAuth } from '@/components/auth/AuthProvider';
 import DemoRoleSwitcher from './DemoRoleSwitcher';
 
 interface NavItem {
@@ -45,15 +46,12 @@ interface AppShellProps {
 
 export default function AppShell({ children, title, crumbs = [], actions }: AppShellProps) {
   const pathname = usePathname();
-  const [role, setRole] = useState<string>('user');
+  const router = useRouter();
+  const { role, signOut, isFirebaseMode } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  useEffect(() => {
-    setRole(storage.getRole());
-  }, [pathname]);
-
   const navs: Record<string, NavSection[]> = {
-    user: [
+    patient: [
       {
         label: 'Care Navigation',
         items: [
@@ -67,13 +65,23 @@ export default function AppShell({ children, title, crumbs = [], actions }: AppS
         ],
       },
     ],
-    provider: [
+    provider_org: [
       {
-        label: 'Practice Panel',
+        label: 'Practice Panel (Clinic)',
         items: [
-          { id: 'provider-dashboard', label: 'Dashboard', href: '/provider/dashboard', icon: Home },
-          { id: 'provider-inbox', label: 'Referral inbox', href: '/provider/inbox', icon: Inbox, pill: '5' },
-          { id: 'provider-register', label: 'Profile Settings', href: '/provider/register', icon: Settings },
+          { id: 'org-dashboard', label: 'Dashboard', href: '/provider/org/dashboard', icon: Home },
+          { id: 'provider-inbox', label: 'Referral inbox', href: '/provider/inbox', icon: Inbox },
+          { id: 'org-register', label: 'Profile Settings', href: '/provider/org/register', icon: Settings },
+        ],
+      },
+    ],
+    solo_provider: [
+      {
+        label: 'Practice Panel (Solo)',
+        items: [
+          { id: 'solo-dashboard', label: 'Dashboard', href: '/provider/solo/dashboard', icon: Home },
+          { id: 'provider-inbox', label: 'Referral inbox', href: '/provider/inbox', icon: Inbox },
+          { id: 'solo-register', label: 'Profile Settings', href: '/provider/solo/register', icon: Settings },
         ],
       },
     ],
@@ -82,14 +90,14 @@ export default function AppShell({ children, title, crumbs = [], actions }: AppS
         label: 'Operations',
         items: [
           { id: 'admin-dashboard', label: 'Dashboard', href: '/admin/dashboard', icon: Home },
-          { id: 'admin-verify', label: 'Provider verification', href: '/admin/verify', icon: ShieldCheck, pill: '3' },
+          { id: 'admin-verify', label: 'Provider verification', href: '/admin/verify', icon: ShieldCheck },
           { id: 'org-insights', label: 'Organization insights', href: '/organization/insights', icon: BarChart3 },
         ],
       },
     ],
   };
 
-  const sections = navs[role] || navs.user;
+  const sections = navs[role as string] || navs.patient;
 
   // Determine which nav item is active
   const isActive = (href: string) => {
@@ -98,6 +106,15 @@ export default function AppShell({ children, title, crumbs = [], actions }: AppS
   };
 
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      router.push('/auth/signin');
+    } catch (e) {
+      console.error('Logout failed: ', e);
+    }
+  };
 
   const sidebarContent = (
     <>
@@ -134,7 +151,17 @@ export default function AppShell({ children, title, crumbs = [], actions }: AppS
 
       <div className="sidebar-foot">
         <DemoRoleSwitcher />
-        <Link href="/" className="nav-item mt-2 text-xs text-wise-muted hover:text-wise-fg">
+        
+        <button 
+          onClick={handleSignOut} 
+          className="nav-item text-xs w-full hover:bg-rose-50 text-rose-700 font-semibold"
+          style={{ cursor: 'pointer', border: 'none', background: 'transparent', textAlign: 'left', display: 'flex', gap: '8px', padding: '8px 12px', borderRadius: '8px', marginTop: '10px' }}
+        >
+          <LogOut className="w-4 h-4 shrink-0" />
+          <span>Sign Out</span>
+        </button>
+
+        <Link href="/" className="nav-item mt-1.5 text-xs text-wise-muted hover:text-wise-fg">
           <ArrowLeft className="w-3.5 h-3.5" /> Back to landing
         </Link>
       </div>
@@ -181,6 +208,15 @@ export default function AppShell({ children, title, crumbs = [], actions }: AppS
 
       {/* Main Panel */}
       <div className="main">
+        {!isFirebaseMode && (
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', background: 'oklch(96.2% 0.015 195)', padding: '10px 24px', borderBottom: '1px solid var(--hairline)', fontSize: '12.5px', color: 'oklch(40% 0.08 195)' }}>
+            <Info className="w-4.5 h-4.5 shrink-0" />
+            <span>
+              Running in <strong>Local Storage Fallback Mode</strong>. Add Firebase credentials in <code>.env.local</code> to enable true database authentication.
+            </span>
+          </div>
+        )}
+        
         <header className="topbar">
           <div>
             {crumbs.length > 0 && (

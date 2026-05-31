@@ -1,0 +1,167 @@
+'use client';
+
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { onAuthStateChanged, User, UserCredential } from 'firebase/auth';
+import { auth, isFirebaseConfigured } from '@/lib/firebase/client';
+import { firestoreHelpers } from '@/lib/firebase/firestore';
+import { authActions } from '@/lib/firebase/auth';
+import { UserRecord } from '@/lib/firebase/types';
+import { storage } from '@/lib/storage';
+
+interface AuthContextType {
+  currentUser: any | null;
+  userProfile: UserRecord | null;
+  role: 'patient' | 'provider_org' | 'solo_provider' | 'admin' | null;
+  loading: boolean;
+  signIn: (email: string, password: string) => Promise<UserCredential | any>;
+  register: (email: string, password: string) => Promise<UserCredential | any>;
+  signOut: () => Promise<void>;
+  isFirebaseMode: boolean;
+}
+
+const AuthContext = createContext<AuthContextType>({
+  currentUser: null,
+  userProfile: null,
+  role: null,
+  loading: true,
+  signIn: async () => {},
+  register: async () => {},
+  signOut: async () => {},
+  isFirebaseMode: false,
+});
+
+export const useAuth = () => useContext(AuthContext);
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [currentUser, setCurrentUser] = useState<any | null>(null);
+  const [userProfile, setUserProfile] = useState<UserRecord | null>(null);
+  const [role, setRole] = useState<'patient' | 'provider_org' | 'solo_provider' | 'admin' | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const isFirebaseMode = isFirebaseConfigured;
+
+  useEffect(() => {
+    if (!isFirebaseMode) {
+      // LocalStorage Fallback Mode
+      const storedRole = storage.getRole() as any;
+      const mappedRole = ['patient', 'provider_org', 'solo_provider', 'admin'].includes(storedRole)
+        ? storedRole
+        : (storedRole === 'provider' 
+          ? 'solo_provider' 
+          : storedRole === 'org' 
+            ? 'provider_org' 
+            : 'patient'); // Default fallback
+
+      setCurrentUser({
+        uid: 'demo-local-uid',
+        email: `${mappedRole}.demo@wisecare.test`,
+        displayName: 'Demo Account',
+      });
+      setUserProfile({
+        uid: 'demo-local-uid',
+        email: `${mappedRole}.demo@wisecare.test`,
+        displayName: 'Demo Account',
+        role: mappedRole,
+        onboardingComplete: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+      setRole(mappedRole);
+      setLoading(false);
+      return;
+    }
+
+    // Firebase Auth Mode
+    if (!auth) {
+      setLoading(false);
+      return;
+    }
+
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        setCurrentUser(user);
+        try {
+          const profile = await firestoreHelpers.getUserProfile(user.uid);
+          if (profile) {
+            setUserProfile(profile);
+            setRole(profile.role);
+          } else {
+            setUserProfile(null);
+            setRole(null);
+          }
+        } catch (e) {
+          console.error("Error loading user profile: ", e);
+        }
+      } else {
+        setCurrentUser(null);
+        setUserProfile(null);
+        setRole(null);
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [isFirebaseMode]);
+
+  const signIn = async (email: string, password: string) => {
+    if (!isFirebaseMode) {
+      // Handle login for local fallback mode
+      // Deduce role from email (e.g. patient.demo@wisecare.test -> patient)
+      let roleChoice: 'patient' | 'provider_org' | 'solo_provider' | 'admin' = 'patient';
+      if (email.startsWith('patient')) roleChoice = 'patient';
+      else if (email.startsWith('clinic')) roleChoice = 'provider_org';
+      else if (email.startsWith('clinician')) roleChoice = 'solo_provider';
+      else if (email.startsWith('admin')) roleChoice = 'admin';
+
+      storage.setRole(roleChoice);
+      const user = { uid: 'demo-local-uid', email, displayName: 'Demo Account' };
+      setCurrentUser(user);
+      setUserProfile({
+        uid: 'demo-local-uid',
+        email,
+        displayName: 'Demo Account',
+        role: roleChoice,
+        onboardingComplete: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+      setRole(roleChoice);
+      return { user };
+    }
+    return authActions.signIn(email, password);
+  };
+
+  const register = async (email: string, password: string) => {
+    if (!isFirebaseMode) {
+      const user = { uid: 'demo-local-uid', email, displayName: 'Demo Account' };
+      setCurrentUser(user);
+      return { user };
+    }
+    return authActions.register(email, password);
+  };
+
+  const signOut = async () => {
+    if (!isFirebaseMode) {
+      setCurrentUser(null);
+      setUserProfile(null);
+      setRole(null);
+      return;
+    }
+    await authActions.signOut();
+  };
+
+  return (
+    <AuthContext.Provider value={{
+      currentUser,
+      userProfile,
+      role,
+      loading,
+      signIn,
+      register,
+      signOut,
+      isFirebaseMode
+    }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}

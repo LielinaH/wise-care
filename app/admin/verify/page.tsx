@@ -3,17 +3,21 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import AppShell from '@/components/layout/AppShell';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import { useAuth } from '@/components/auth/AuthProvider';
+import { firestoreHelpers } from '@/lib/firebase/firestore';
 import { storage } from '@/lib/storage';
-import { Check, Info, AlertTriangle, Clock, X, Mail, ShieldAlert, ArrowRight } from 'lucide-react';
+import { Check, Info, AlertTriangle, Clock, ArrowRight, Loader2 } from 'lucide-react';
 import Notice from '@/components/ui/Notice';
 
 const INITIAL_PENDING = [
-  { id: 'pp-301', name: 'Marin Telehealth Group', license: 'LCSW · CA #LCS24011', specialty: 'Anxiety, Trauma', insurance: 'Private Plan A, Private Plan B, Self-pay', state: 'CA', submitted: '11 hrs ago', telehealth: true, slidingScale: true },
-  { id: 'pp-302', name: 'Dr. R. - Psychiatry', license: 'MD · NY #ML87302', specialty: 'Mood, ADHD', insurance: 'Private Plan B, Marketplace Plan', state: 'NY', submitted: '1 day ago', telehealth: true, slidingScale: false },
-  { id: 'pp-303', name: 'Westbrook Counseling', license: 'LMFT · OR #LMF21998', specialty: 'Relationships, Burnout', insurance: 'Sliding scale, Self-pay', state: 'OR', submitted: '2 days ago', telehealth: false, slidingScale: true },
+  { id: 'pp-301', providerId: 'demo-p1', providerType: 'provider_org', name: 'Marin Telehealth Group', license: 'LCSW · CA #LCS24011', specialty: 'Anxiety, Trauma', insurance: 'Private Plan A, Private Plan B, Self-pay', state: 'CA', submitted: '11 hrs ago', telehealth: true, slidingScale: true },
+  { id: 'pp-302', providerId: 'demo-p2', providerType: 'solo_provider', name: 'Dr. R. - Psychiatry', license: 'MD · NY #ML87302', specialty: 'Mood, ADHD', insurance: 'Private Plan B, Marketplace Plan', state: 'NY', submitted: '1 day ago', telehealth: true, slidingScale: false },
+  { id: 'pp-303', providerId: 'demo-p3', providerType: 'solo_provider', name: 'Westbrook Counseling', license: 'LMFT · OR #LMF21998', specialty: 'Relationships, Burnout', insurance: 'Sliding scale, Self-pay', state: 'OR', submitted: '2 days ago', telehealth: false, slidingScale: true },
 ];
 
-export default function AdminVerify() {
+function AdminVerifyContent() {
+  const { currentUser, isFirebaseMode } = useAuth();
   const [pending, setPending] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string>('');
@@ -31,40 +35,162 @@ export default function AdminVerify() {
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    const stored = storage.getStorageItem<any[]>('wisecare.pendingProviders', []);
-    if (stored.length > 0) {
-      setPending(stored);
-      setSelectedId(stored[0].id);
-    } else {
-      setPending(INITIAL_PENDING);
-      storage.setStorageItem('wisecare.pendingProviders', INITIAL_PENDING);
-      if (INITIAL_PENDING.length > 0) {
-        setSelectedId(INITIAL_PENDING[0].id);
+    async function loadVerificationQueue() {
+      if (isFirebaseMode) {
+        try {
+          const requests = await firestoreHelpers.getVerificationRequests();
+          const pendingRequests = requests.filter(r => r.status === 'pending');
+          
+          const loaded = [];
+          for (const req of pendingRequests) {
+            let name = '';
+            let license = '';
+            let specialty = '';
+            let insurance = '';
+            let state = '';
+            let telehealth = false;
+            let slidingScale = false;
+            
+            if (req.providerType === 'solo_provider') {
+              const profile = await firestoreHelpers.getSoloProviderProfile(req.providerId);
+              if (profile) {
+                name = profile.displayName || 'Solo Provider';
+                license = `${profile.licenseType || 'License'} · ${profile.licenseState || ''} #${profile.licenseNumberPlaceholder || ''}`;
+                specialty = profile.specialties?.join(', ') || 'General Practice';
+                insurance = profile.coverageOptions?.join(', ') || 'Self-pay';
+                state = profile.licenseState || 'N/A';
+                telehealth = profile.modalities?.some(m => m.toLowerCase().includes('telehealth')) || false;
+                slidingScale = profile.coverageOptions?.some(o => o.toLowerCase().includes('sliding')) || false;
+              }
+            } else {
+              const profile = await firestoreHelpers.getProviderOrgProfile(req.providerId);
+              if (profile) {
+                name = profile.organizationName || 'Organization Clinic';
+                license = `${profile.organizationType || 'Clinic'} · ${profile.locations?.join(', ') || ''}`;
+                specialty = profile.specialties?.join(', ') || 'Multidisciplinary';
+                insurance = profile.coverageOptions?.join(', ') || 'Various Insurance';
+                state = profile.locations?.[0] || 'N/A';
+                telehealth = profile.modalities?.some(m => m.toLowerCase().includes('telehealth')) || false;
+                slidingScale = profile.coverageOptions?.some(o => o.toLowerCase().includes('sliding')) || false;
+              }
+            }
+            
+            loaded.push({
+              id: req.requestId || '',
+              providerId: req.providerId,
+              providerType: req.providerType,
+              name: name || `Provider (${req.providerId.substring(0, 6)})`,
+              license: license || 'Pending credentials',
+              specialty: specialty || 'Awaiting input',
+              insurance: insurance || 'Awaiting input',
+              state: state || 'N/A',
+              submitted: req.createdAt && req.createdAt.seconds 
+                ? new Date(req.createdAt.seconds * 1000).toLocaleDateString()
+                : 'Just now',
+              telehealth,
+              slidingScale,
+              notes: req.notes || ''
+            });
+          }
+          
+          setPending(loaded);
+          if (loaded.length > 0) {
+            setSelectedId(loaded[0].id);
+          } else {
+            setSelectedId('');
+          }
+        } catch (e) {
+          console.error("Error loading verification requests:", e);
+        }
+      } else {
+        const stored = storage.getStorageItem<any[]>('wisecare.pendingProviders', []);
+        if (stored.length > 0) {
+          setPending(stored);
+          setSelectedId(stored[0].id);
+        } else {
+          setPending(INITIAL_PENDING);
+          storage.setStorageItem('wisecare.pendingProviders', INITIAL_PENDING);
+          if (INITIAL_PENDING.length > 0) {
+            setSelectedId(INITIAL_PENDING[0].id);
+          }
+        }
       }
-    }
-    setLoading(false);
-  }, []);
-
-  const handleAction = (id: string, name: string, action: 'approved' | 'declined' | 'more-info' | 'hold') => {
-    const updated = pending.filter(p => p.id !== id);
-    setPending(updated);
-    storage.setStorageItem('wisecare.pendingProviders', updated);
-
-    // If there is another item, select it
-    if (updated.length > 0) {
-      setSelectedId(updated[0].id);
-    } else {
-      setSelectedId('');
+      setLoading(false);
     }
 
-    if (action === 'approved') {
-      showToast(`Provider approved · listing live`);
-    } else if (action === 'declined') {
-      showToast(`Application rejected`);
-    } else if (action === 'more-info') {
-      showToast(`Info request sent to provider`);
+    loadVerificationQueue();
+  }, [currentUser, isFirebaseMode]);
+
+  const handleAction = async (id: string, name: string, action: 'approved' | 'declined' | 'more-info' | 'hold') => {
+    if (isFirebaseMode) {
+      try {
+        const req = pending.find(p => p.id === id);
+        if (!req) return;
+        
+        let status: 'pending' | 'approved' | 'rejected' | 'request_info' = 'pending';
+        let notes = '';
+        let toastMsgText = '';
+        
+        if (action === 'approved') {
+          status = 'approved';
+          notes = 'Credentials verified and approved by administrator';
+          toastMsgText = 'Provider approved · listing live';
+        } else if (action === 'declined') {
+          status = 'rejected';
+          notes = 'Credentials rejected';
+          toastMsgText = 'Application rejected';
+        } else if (action === 'more-info') {
+          status = 'request_info';
+          notes = 'Additional information requested by administrator';
+          toastMsgText = 'Info request sent to provider';
+        } else {
+          status = 'pending';
+          notes = 'Held for review';
+          toastMsgText = 'Held for senior review';
+        }
+        
+        await firestoreHelpers.updateVerificationRequestStatus(
+          req.id,
+          status,
+          notes,
+          req.providerType,
+          req.providerId
+        );
+        
+        showToast(toastMsgText);
+        
+        // Remove from list in UI
+        const updated = pending.filter(p => p.id !== id);
+        setPending(updated);
+        if (updated.length > 0) {
+          setSelectedId(updated[0].id);
+        } else {
+          setSelectedId('');
+        }
+      } catch (e) {
+        console.error("Error updating verification request:", e);
+        showToast("Error updating verification request");
+      }
     } else {
-      showToast(`Held for senior review`);
+      const updated = pending.filter(p => p.id !== id);
+      setPending(updated);
+      storage.setStorageItem('wisecare.pendingProviders', updated);
+
+      if (updated.length > 0) {
+        setSelectedId(updated[0].id);
+      } else {
+        setSelectedId('');
+      }
+
+      if (action === 'approved') {
+        showToast(`Provider approved · listing live`);
+      } else if (action === 'declined') {
+        showToast(`Application rejected`);
+      } else if (action === 'more-info') {
+        showToast(`Info request sent to provider`);
+      } else {
+        showToast(`Held for senior review`);
+      }
     }
   };
 
@@ -87,7 +213,7 @@ export default function AdminVerify() {
       <AppShell title="Provider verification" crumbs={['Operations', 'Verification']}>
         <div className="flex flex-col items-center justify-center py-20 gap-4">
           <Clock className="w-8 h-8 text-wise-teal animate-spin" />
-          <p className="text-sm text-wise-muted">Loading verification queue...</p>
+          <p className="text-sm text-wise-muted font-medium">Loading verification queue...</p>
         </div>
       </AppShell>
     );
@@ -140,7 +266,7 @@ export default function AdminVerify() {
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                       <span style={{ fontWeight: 600, fontSize: '14px' }}>{pp.name}</span>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--muted)', letterSpacing: '0.04em' }}>{pp.submitted}</span>
+                      <span style={{ marginLeft: 'auto', fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--muted)', letterSpacing: '0.04em' }}>{pp.submitted}</span>
                     </div>
                     <div style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '6px' }}>{pp.license}</div>
                     <div style={{ display: 'flex', gap: '5px' }}>
@@ -259,13 +385,22 @@ export default function AdminVerify() {
         )}
 
         {/* Prototype Disclaimer */}
-        <div className="mt-6">
-          <Notice variant="standard">
-            For this prototype, your information is stored locally in this browser session. Nothing is shared unless you explicitly choose to send a simulated connection request.
-          </Notice>
+        <div className="notice flex gap-3.5 items-start mt-6">
+          <Info className="w-4.5 h-4.5 text-wise-teal shrink-0 mt-0.5" />
+          <div className="text-[12.5px] text-wise-muted">
+            <strong style={{ color: 'var(--fg)' }}>Prototype note.</strong> This is a demo prototype. Do not enter real medical or personal health information. Wise Care does not diagnose, provide therapy, prescribe medication, or replace a licensed professional. It does not claim HIPAA compliance, perform real provider credential verification, or store production medical records.
+          </div>
         </div>
 
       </div>
     </AppShell>
+  );
+}
+
+export default function AdminVerify() {
+  return (
+    <ProtectedRoute allowedRoles={['admin']}>
+      <AdminVerifyContent />
+    </ProtectedRoute>
   );
 }

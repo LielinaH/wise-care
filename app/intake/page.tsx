@@ -1,18 +1,21 @@
 'use client';
+/* eslint-disable react-hooks/incompatible-library */
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
-import { Check, AlertTriangle, ArrowRight } from 'lucide-react';
+import { Check, ArrowRight } from 'lucide-react';
 import { storage } from '@/lib/storage';
+import { useAuth } from '@/components/auth/AuthProvider';
+import { firestoreHelpers } from '@/lib/firebase/firestore';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import AppShell from '@/components/layout/AppShell';
 import Notice from '@/components/ui/Notice';
 import PremiumCard from '@/components/ui/PremiumCard';
 import Badge from '@/components/ui/Badge';
 import { IntakeAnswers } from '@/lib/types';
 
-// Let's define the steps
 const STEPS = [
   { id: 'concerns', title: "What's bringing you here today?", sub: "Pick any that fit. You can add details below." },
   { id: 'timeline', title: "How long has this been happening?", sub: "And how intense does it feel right now?" },
@@ -60,11 +63,11 @@ const SUPPORT_OPTIONS = [
   { v: 'unsure', l: "I'm not sure", s: "That's okay. We'll suggest a path based on your situation." },
 ];
 
-export default function IntakePage() {
+function IntakePageContent() {
   const router = useRouter();
+  const { currentUser, isFirebaseMode } = useAuth();
   const [stepIndex, setStepIndex] = useState(0);
 
-  // Use react-hook-form
   const { register, watch, setValue } = useForm<IntakeAnswers>({
     defaultValues: {
       concerns: [],
@@ -81,7 +84,6 @@ export default function IntakePage() {
     }
   });
 
-  // Watch fields to render dynamic previews
   const watchedConcerns = watch('concerns') || [];
   const watchedConcernDetail = watch('concernDetail');
   const watchedDuration = watch('duration');
@@ -95,23 +97,43 @@ export default function IntakePage() {
   const watchedUrgency = watch('urgency');
 
   useEffect(() => {
-    // Load existing intake if saved
-    const savedIntake = storage.getIntake();
-    if (savedIntake.concerns) {
-      Object.entries(savedIntake).forEach(([key, val]) => {
-        setValue(key as any, val);
-      });
-    }
-    const savedStep = storage.getIntakeStep();
-    if (savedStep && savedStep < STEPS.length) {
-      setStepIndex(savedStep);
-    }
-  }, [setValue]);
+    async function loadSavedIntake() {
+      if (!currentUser) return;
 
-  const saveState = (nextStep: number) => {
+      if (isFirebaseMode) {
+        try {
+          const profile = await firestoreHelpers.getPatientProfile(currentUser.uid);
+          if (profile && profile.intakeAnswers) {
+            Object.entries(profile.intakeAnswers).forEach(([key, val]) => {
+              setValue(key as any, val);
+            });
+          }
+        } catch (e) {
+          console.error("Error loading saved intake: ", e);
+        }
+      } else {
+        const savedIntake = storage.getIntake();
+        if (savedIntake.concerns) {
+          Object.entries(savedIntake).forEach(([key, val]) => {
+            setValue(key as any, val);
+          });
+        }
+      }
+
+      // Check step index cache locally
+      const savedStep = storage.getIntakeStep();
+      if (savedStep && savedStep < STEPS.length) {
+        setStepIndex(savedStep);
+      }
+    }
+
+    loadSavedIntake();
+  }, [currentUser, isFirebaseMode, setValue]);
+
+  const saveState = async (nextStep: number) => {
     const currentValues = {
       concerns: watchedConcerns,
-      concernDetail: watchedConcernDetail,
+      concernDetail: watchedConcernDetail || '',
       duration: watchedDuration,
       intensity: watchedIntensity,
       impact: watchedImpact,
@@ -122,20 +144,32 @@ export default function IntakePage() {
       stateName: watchedStateName,
       urgency: watchedUrgency,
     };
-    storage.setIntake(currentValues);
+
+    if (isFirebaseMode && currentUser) {
+      try {
+        await firestoreHelpers.setPatientProfile(currentUser.uid, {
+          intakeAnswers: currentValues,
+          intakeStatus: 'started'
+        });
+      } catch (e) {
+        console.error("Error saving intake progress: ", e);
+      }
+    } else {
+      storage.setIntake(currentValues);
+    }
+
     storage.setIntakeStep(nextStep);
     setStepIndex(nextStep);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (stepIndex < STEPS.length - 1) {
-      saveState(stepIndex + 1);
+      await saveState(stepIndex + 1);
     } else {
-      // Final submission trigger
       const finalData = {
         concerns: watchedConcerns,
-        concernDetail: watchedConcernDetail,
+        concernDetail: watchedConcernDetail || '',
         duration: watchedDuration,
         intensity: watchedIntensity,
         impact: watchedImpact,
@@ -146,15 +180,28 @@ export default function IntakePage() {
         stateName: watchedStateName,
         urgency: watchedUrgency,
       };
-      storage.setIntake(finalData);
+
+      if (isFirebaseMode && currentUser) {
+        try {
+          await firestoreHelpers.setPatientProfile(currentUser.uid, {
+            intakeAnswers: finalData,
+            intakeStatus: 'completed'
+          });
+        } catch (e) {
+          console.error("Error finalizing intake: ", e);
+        }
+      } else {
+        storage.setIntake(finalData);
+      }
+
       storage.setIntakeStep(0); // Reset step tracking
       router.push('/ai-processing');
     }
   };
 
-  const handleBack = () => {
+  const handleBack = async () => {
     if (stepIndex > 0) {
-      saveState(stepIndex - 1);
+      await saveState(stepIndex - 1);
     }
   };
 
@@ -187,11 +234,11 @@ export default function IntakePage() {
 
   return (
     <AppShell title="Private Intake" crumbs={['Care', 'Intake']} actions={
-      <Link href="/dashboard" className="btn btn-quiet btn-sm text-xs font-semibold">Save & exit</Link>
+      <Link href="/dashboard" className="btn btn-quiet btn-sm text-xs font-semibold">Save &amp; exit</Link>
     }>
       <div className="max-w-[720px] mx-auto space-y-6">
         
-        {/* Progress bar using custom CSS variables */}
+        {/* Progress bar */}
         <div className="bg-wise-bg sticky top-[78px] z-10 py-3 border-b border-wise-hairline">
           <div className="flex justify-between items-center mb-2.5 text-xs text-wise-muted">
             <span className="font-medium">Step {stepIndex + 1} of {STEPS.length}</span>
@@ -207,7 +254,7 @@ export default function IntakePage() {
           </div>
         </div>
 
-        {/* Step Card Container using PremiumCard bezel variant */}
+        {/* Step Card Container */}
         <PremiumCard variant="bezel" className="enter">
           <span className="kicker">Private intake · structured</span>
           <h2 className="text-2xl font-display font-semibold tracking-tight my-2">{STEPS[stepIndex].title}</h2>
@@ -356,7 +403,6 @@ export default function IntakePage() {
                 })}
               </div>
 
-              {/* Immediate crisis flag */}
               {isCrisis && (
                 <Notice variant="danger" title="If you may be in immediate danger, please reach out now.">
                   <p className="text-xs leading-relaxed opacity-95 mb-3.5">
@@ -374,7 +420,6 @@ export default function IntakePage() {
           {/* Step 5: Preferences and Barriers */}
           {stepIndex === 4 && (
             <div className="space-y-6">
-              {/* Support Type */}
               <div className="field">
                 <label className="field-label block mb-2">What kind of support sounds right?</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -401,7 +446,6 @@ export default function IntakePage() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3">
-                {/* Insurance */}
                 <div className="field">
                   <label className="field-label">Insurance or payment preference</label>
                   <select
@@ -420,7 +464,6 @@ export default function IntakePage() {
                   <span className="field-hint">Helps us match providers you can actually cover.</span>
                 </div>
 
-                {/* State */}
                 <div className="field">
                   <label className="field-label">State you live in</label>
                   <select
@@ -435,7 +478,6 @@ export default function IntakePage() {
                 </div>
               </div>
 
-              {/* Modality */}
               <div className="field pt-3">
                 <label className="field-label">Telehealth or in-person?</label>
                 <div className="grid grid-cols-3 gap-2.5">
@@ -455,7 +497,6 @@ export default function IntakePage() {
                 </div>
               </div>
 
-              {/* Urgency */}
               <div className="field pt-3">
                 <label className="field-label">How soon would you like a first appointment?</label>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
@@ -550,7 +591,7 @@ export default function IntakePage() {
             </button>
             
             <span className="text-xs text-wise-muted">
-              {stepIndex < STEPS.length - 1 ? 'Your answers are auto-saved.' : 'Click below to run safety & routing review.'}
+              {stepIndex < STEPS.length - 1 ? 'Your answers are saved dynamically.' : 'Click below to submit and generate care route.'}
             </span>
             
             <button
@@ -565,17 +606,25 @@ export default function IntakePage() {
           </div>
         </PremiumCard>
 
-        {/* Notices using custom Notice component */}
+        {/* Notices */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Notice title="Responsible AI">
-            Wise Care uses intake parameters strictly to recommend care pathways. For this prototype, your information is stored locally in this browser session. Nothing is shared unless you explicitly choose to send a simulated connection request.
+            Wise Care uses intake parameters strictly to recommend care pathways. For this prototype, your information is stored in a Firebase-backed demo database. Do not enter real medical or personal health information. Nothing is shared unless you explicitly choose to send a simulated connection request.
           </Notice>
           <Notice variant="warn" title="Immediate need?">
-            You do not need to finish this intake. Call or text the <strong>988 Suicide & Crisis Lifeline</strong> anytime for direct, free, and confidential professional help.
+            You do not need to finish this intake. Call or text the <strong>988 Suicide &amp; Crisis Lifeline</strong> anytime for direct, free, and confidential professional help.
           </Notice>
         </div>
 
       </div>
     </AppShell>
+  );
+}
+
+export default function IntakePage() {
+  return (
+    <ProtectedRoute allowedRoles={['patient']}>
+      <IntakePageContent />
+    </ProtectedRoute>
   );
 }

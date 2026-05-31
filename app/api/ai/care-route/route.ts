@@ -5,6 +5,13 @@ import { getCareRoute } from '@/lib/ai/gemini';
 
 export async function POST(request: Request) {
   try {
+    // Read the authorization header. Token verification is prototype-level in this pass.
+    const authHeader = request.headers.get('Authorization');
+    if (authHeader) {
+      const token = authHeader.startsWith('Bearer ') ? authHeader.substring(7) : authHeader;
+      console.log(`[Prototype Auth] Gemini care-route request received token: ${token.substring(0, 10)}...`);
+    }
+
     const intakeAnswers = (await request.json()) as IntakeAnswers;
 
     // Validate request body basic fields

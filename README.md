@@ -1,12 +1,15 @@
-# Wise Care - AI-Powered Mental Health Access Platform
+# Wise Care - AI-Powered Mental Health Access & Care Navigation
 
 Wise Care is a fictional AI-powered mental health access and care-navigation platform for the U.S. market. It helps individuals move from *"I need help but don’t know where to start"* to a tailored care route, matched support options, provider connection, preparation packets, and follow-up tracking.
 
-This project is rebuilt from a static Open Design HTML/CSS prototype into a production-quality full-stack Next.js application using React, TypeScript, Tailwind CSS, and the Gemini API.
+This platform has been converted from a client-side mock demo into a full-stack Next.js application backed by **Firebase Authentication** and **Cloud Firestore**, with server-side AI processing via the **Gemini API**.
 
-> **Important Safety Copy**  
-> *“Wise Care does not diagnose, provide therapy, prescribe medication, or replace a licensed professional.”*  
-> *“If you may be in immediate danger or thinking about harming yourself, contact emergency services or a crisis hotline immediately (call/text 988, or call 911).”*
+> **[!WARNING]**
+> **PROTOTYPE LIMITATIONS & SAFETY WARNING**  
+> * This is a demo prototype. Do not enter real medical or personal health information (PHI).  
+> * Wise Care does not claim HIPAA compliance, perform real clinician credential verification, handle real emergency responses, verify real insurance coverage, or store production-grade medical records.  
+> * Wise Care does not diagnose, provide therapy, prescribe medication, or replace a licensed professional.  
+> * If you may be in immediate danger or thinking about harming yourself, contact emergency services or a crisis hotline immediately (call/text 988, or call 911).
 
 ---
 
@@ -25,13 +28,49 @@ Wise Care operates as a pure **navigation and preparation layer** between recogn
 
 ---
 
-## 2. Platform Features & Demo Roles
+## 2. Platform Architecture & Data Persistence
 
-To test the multi-sided platform workflow, a **Demo Role Switcher** is included in the sidebar navigation:
-- **User Dashboard (`/dashboard`):** Guides patients through Intake, AI Processing, Care Route results, Provider Matching, Care Packet previews, and Connection Requests.
-- **Provider Portal (`/provider/dashboard`):** Allows clinician groups to complete directory listings and review incoming patient Care Packets inside the **Referral Inbox** (`/provider/inbox`).
-- **Admin Dashboard (`/admin/dashboard`):** Allows administrators to inspect directory health, manage the provider credentials verification queue, and monitor high-risk safety alerts.
-- **Organization Insights (`/organization/insights`):** Displays anonymized, aggregate metrics for enterprise/university partners (common access barriers, route distribution) with strict privacy disclaimers.
+Wise Care supports two modes:
+1. **Live Firebase Mode**: Uses Firebase Authentication and Cloud Firestore for persistence, with Gemini API routes processing server-side.
+2. **Fallback Developer Mode**: If environment variables are missing, the application automatically falls back to `localStorage` for state management and local mock templates for AI generation, showing a warning banner.
+
+### Account Roles
+The application uses four distinct, secure user roles:
+* `patient`: Individuals seeking care navigation, intake check-ins, care packets, and referrals.
+* `solo_provider`: Individual clinicians managing availability, licensing details, and receiving referrals.
+* `provider_org`: Clinical organizations, group practices, or clinics receiving referrals.
+* `admin`: Operators managing system health, monitoring high-risk alerts, and reviewing provider credentials.
+
+### Firestore Collections
+The Firestore schema consists of the following collections:
+
+1. **`users`**
+   * Document path: `/users/{uid}`
+   * Fields: `uid`, `email`, `displayName`, `role` (one of the 4 roles above), `onboardingComplete`, `createdAt`, `updatedAt`
+2. **`patients`**
+   * Document path: `/patients/{uid}`
+   * Fields: `userId`, `displayName`, `intakeStatus` (`not_started` | `started` | `completed`), `activeCareRouteId`, `activeCarePacketId`, `activeReferralId`, `intakeAnswers` (JSON map of answers), `savedProviderIds` (array of strings), `createdAt`, `updatedAt`
+3. **`soloProviders`**
+   * Document path: `/soloProviders/{uid}`
+   * Fields: `userId`, `displayName`, `licenseType`, `licenseState`, `licenseNumberPlaceholder`, `specialties` (array), `modalities` (array), `coverageOptions` (array), `availability`, `verificationStatus` (`draft` | `pending` | `verified` | `rejected`), `createdAt`, `updatedAt`
+4. **`providerOrganizations`**
+   * Document path: `/providerOrganizations/{orgId}`
+   * Fields: `orgId`, `ownerUserId`, `organizationName`, `organizationType`, `verificationStatus`, `services` (array), `specialties` (array), `modalities` (array), `coverageOptions` (array), `locations` (array), `availability`, `createdAt`, `updatedAt`
+5. **`careRoutes`**
+   * Document path: `/careRoutes/{routeId}`
+   * Fields: `patientId`, `riskLevel`, `recommendedRoute`, `recommendedSupportTypes` (array), `reasoningSummary`, `detectedBarriers` (array), `careGoals` (array), `nextSteps` (array), `matchingCriteria` (JSON), `safetyMessage`, `isFallback` (boolean), `createdAt`, `updatedAt`
+6. **`carePackets`**
+   * Document path: `/carePackets/{packetId}`
+   * Fields: `patientId`, `careRouteId`, `mainConcerns` (array), `timeline`, `dailyLifeImpact` (array), `careGoals` (array), `questionsToAskProvider` (array), `materialsToPrepare` (array), `insurancePaymentNotes` (array), `suggestedOutreachMessage`, `shareableSummary`, `nextStepChecklist` (array), `selectedFields` (map of flags), `isFallback` (boolean), `createdAt`, `updatedAt`
+7. **`referrals`**
+   * Document path: `/referrals/{referralId}`
+   * Fields: `patientId`, `patientDisplayName`, `providerType` (`solo_provider` | `provider_org`), `providerId`, `providerName`, `carePacketId`, `careRouteId`, `status` (`pending` | `accepted` | `waitlisted` | `declined` | `request_info` | `withdrawn`), `providerMessage` (optional), `createdAt`, `updatedAt`
+8. **`followUps`**
+   * Document path: `/followUps/{followUpId}`
+   * Fields: `patientId`, `referralId`, `contactedProvider` (boolean), `scheduledAppointment` (boolean), `blocker`, `recommendedAdjustment`, `nextBestActions` (array), `createdAt`
+9. **`providerVerificationRequests`**
+   * Document path: `/providerVerificationRequests/{requestId}`
+   * Fields: `providerType`, `providerId`, `submittedBy`, `status` (`pending` | `approved` | `rejected` | `request_info`), `notes`, `createdAt`, `updatedAt`
 
 ---
 
@@ -43,95 +82,19 @@ Wise Care implements three server-side generative workflows powered by the `@goo
 2. **Care Packet AI Workflow (`POST /api/ai/care-packet`):** Structures answers and routes into a clinical brief (timeline, impact, materials checklist) and a copyable email outreach draft.
 3. **Follow-Up AI Workflow (`POST /api/ai/follow-up`):** Analyzes post-referral roadblocks (cost, wait times, anxiety) to suggest next best action steps.
 
-### Safe Fallback Mode
-If `GEMINI_API_KEY` is not configured, the endpoints gracefully fall back to structured local mock templates and display a banner:  
-`Using fallback AI response because Gemini is not configured.`  
-This ensures the prototype remains fully testable in all environments.
-
----
-
-## 4. Tech Stack
-
-- **Framework:** Next.js 16 (App Router)
-- **Language:** TypeScript
-- **Styling:** Tailwind CSS v4 (CSS-first variable configurations)
-- **Icons:** Lucide React
-- **Forms:** React Hook Form
-- **AI SDK:** `@google/genai`
-- **Validation:** Zod
-- **Persistence:** Local Storage (for SSR-safe mock database synchronization)
-
----
-
-## 5. Folder Structure
-
+### Authentication Token Handling
+To secure generative endpoints, client-side scripts request a Firebase ID token (`currentUser.getIdToken()`) and attach it as a Bearer token in the request header:
 ```
-wise-care/
-├── app/
-│   ├── api/
-│   │   ├── ai/
-│   │   │   ├── care-packet/route.ts
-│   │   │   ├── care-route/route.ts
-│   │   │   └── follow-up/route.ts
-│   │   └── ...
-│   ├── admin/
-│   │   ├── dashboard/page.tsx
-│   │   └── verify/page.tsx
-│   ├── provider/
-│   │   ├── dashboard/page.tsx
-│   │   ├── inbox/page.tsx
-│   │   └── register/page.tsx
-│   ├── organization/
-│   │   └── insights/page.tsx
-│   ├── signin/page.tsx
-│   ├── dashboard/page.tsx
-│   ├── intake/page.tsx
-│   ├── ai-processing/page.tsx
-│   ├── care-route/page.tsx
-│   ├── matching/page.tsx
-│   ├── care-packet/page.tsx
-│   ├── connection-request/page.tsx
-│   ├── follow-up/page.tsx
-│   ├── globals.css
-│   ├── layout.tsx
-│   └── page.tsx
-├── components/
-│   ├── layout/
-│   │   ├── AppShell.tsx
-│   │   └── DemoRoleSwitcher.tsx
-│   └── wise-care/
-│       └── FallbackBanner.tsx
-├── docs/
-│   ├── problem-framing.md
-│   ├── mvp-thinking.md
-│   ├── business-case.md
-│   ├── safety-responsibility.md
-│   └── 30-day-roadmap.md
-├── lib/
-│   ├── ai/
-│   │   ├── gemini.ts
-│   │   ├── prompts.ts
-│   │   ├── safety.ts
-│   │   └── schemas.ts
-│   ├── data/
-│   │   ├── mockProviders.ts
-│   │   ├── mockResources.ts
-│   │   └── mockReferrals.ts
-│   ├── matching/
-│   │   └── matchProviders.ts
-│   ├── storage.ts
-│   └── types.ts
-├── tests/
-│   └── test.ts
-└── README.md
+Authorization: Bearer <firebase_id_token>
 ```
+The API routes parse and log this header. At the prototype level, this verifies the boundary for secure authenticated writes.
 
 ---
 
-## 6. Setup & Execution
+## 4. Setup & Execution
 
 ### Prerequisites
-- Node.js 20 or later
+* Node.js 20 or later
 
 ### Installation
 1. Install dependencies:
@@ -139,19 +102,29 @@ wise-care/
    npm install
    ```
 
-2. Configure environment variables:
+2. Configure environment variables by copying the example environment file:
    ```bash
    cp .env.example .env.local
    ```
-   Edit `.env.local` and add your API key:
+   Modify `.env.local` to fill out your details:
    ```env
-   GEMINI_API_KEY=your_key_here
+   # Live Gemini API Key configuration
+   GEMINI_API_KEY=AIzaSy...
    GEMINI_MODEL=gemini-2.5-flash
+
+   # Firebase configuration parameters
+   NEXT_PUBLIC_FIREBASE_API_KEY=your-api-key
+   NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-auth-domain
+   NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-project-id
+   NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your-storage-bucket
+   NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your-sender-id
+   NEXT_PUBLIC_FIREBASE_APP_ID=your-app-id
    ```
 
-3. Run automated tests:
+3. Setup Firestore Security Rules:
+   Deploy the `firestore.rules` file to your Firebase Project to secure your database collections:
    ```bash
-   npx tsx tests/test.ts
+   firebase deploy --only firestore:rules
    ```
 
 4. Launch local development server:
@@ -162,15 +135,35 @@ wise-care/
 
 ---
 
-## 7. Interactive Demo Flow
+## 5. Demo Account Setup & Interactive Testing
 
-1. **User Landing:** Go to the home page, read the safety copy, and click **Start care navigation**.
-2. **Mock Log In:** Select **Individual Seeking Care**.
-3. **Caseload Check-in:** Click **Begin private intake** on your dashboard.
-4. **Crisis Check:** Fill out Step 4. If you select **Immediate concern**, notice the page automatically swaps to prioritize 988 emergency lifelines.
-5. **Route Analysis:** Fill out standard options and click submit. Review the animated progress steps.
-6. **Review Route:** Read the AI-generated care recommendations, reasoning summary, and care goals. Click **Match support**.
-7. ** Algorithmic Matches:** Inspect scored synthetic clinics. Click **Save to plan** on a therapist, then click **Connect**.
-8. **Direct outreach:** Custom-edit the outreach message, agree to the consent checkbox, and click **Send connection request**.
-9. **Caseload Propagation:** Toggle the **Demo Role Switcher** to **Provider** in the sidebar. Visit the **Referral Inbox** and see the referral you just submitted listed in the queue!
-10. **Admin & Partner Views:** Switch to **Admin** to approve directories, or **Org** to view anonymized barrier charts updating dynamically.
+### Demo Accounts in Fallback Mode
+If Firebase configurations are missing, you can test the entire loop by using the following simulated logins (no password required, email prefix triggers role):
+* **Patient**: `patient.demo@wisecare.test`
+* **Solo Clinician**: `clinician.demo@wisecare.test`
+* **Group Practice / Org**: `clinic.demo@wisecare.test`
+* **Platform Admin**: `admin.demo@wisecare.test`
+
+### Setup Demo Admin Account in Firebase Mode
+Registration for the `admin` role is secured to prevent unauthorized access.
+1. Sign up a new user via the regular registration page (`/auth/register`).
+2. Open your Firebase Console and go to the **Firestore Database** tab.
+3. Locate the `users` collection, select the document corresponding to your newly registered user's `uid`, and edit the `role` field value to `"admin"`.
+4. The user is now recognized as a Platform Admin, allowing them to access the Admin dashboards.
+
+---
+
+## 6. What is Working vs. Simulated
+
+### Fully Working Features
+* **Firebase Authentication**: Sign up and sign in using Firebase Auth with secure client validation.
+* **Role-Based Routing**: Redirections keep patients, providers, and admins in their respective areas.
+* **Intake & Route Storage**: Answers are stored in Firestore, Gemini API generates care routes, and they are saved back to Firestore linked to the patient profile.
+* **Clinician Matchmaking**: Direct queries filter clinicians by licensing states, specialties, and insurance options.
+* **Referral Management**: Sent connection requests are persisted as referral documents. Clinicians view incoming referrals in real time and can accept, waitlist, or decline them.
+* **Admin Verification panel**: Administrators can review pending credentials, check licensing parameters, and approve or reject clinical directory listings.
+
+### Simulated Elements
+* **Clinician Directory**: Seeding is populated with synthetic clinicians for demonstration purposes.
+* **Outreach Communications**: Clicking "Send connection request" creates a record in Cloud Firestore for the provider's inbox, but does not send physical emails or integrate with EHR systems.
+* **Verification Checks**: The checklist inside the admin verification page is manually checked by the admin and simulated rather than pulling from official state regulatory databases.

@@ -57,28 +57,54 @@ const BARRIER_ADVICE: Record<string, { t: string; d: string; action: string; hre
   },
 };
 
-export default function FollowUpPage() {
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import { useAuth } from '@/components/auth/AuthProvider';
+import { firestoreHelpers } from '@/lib/firebase/firestore';
+import { useRouter } from 'next/navigation';
+
+function FollowUpPageContent() {
+  const router = useRouter();
+  const { currentUser, isFirebaseMode } = useAuth();
+
   const [contacted, setContacted] = useState<string | null>(null);
   const [scheduled, setScheduled] = useState<string | null>(null);
   const [barrier, setBarrier] = useState<string | null>(null);
   const [symptoms, setSymptoms] = useState<string>('same');
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Seed from localstorage if exists
-    const stored = localStorage.getItem('wisecare.followup');
-    if (stored) {
-      try {
-        const state = JSON.parse(stored);
-        if (state.contacted) setContacted(state.contacted);
-        if (state.scheduled) setScheduled(state.scheduled);
-        if (state.barrier) setBarrier(state.barrier);
-        if (state.symptoms) setSymptoms(state.symptoms);
-      } catch (e) {
-        console.warn('Failed to parse cached follow up state', e);
+    async function loadData() {
+      if (isFirebaseMode && currentUser) {
+        try {
+          const followups = await firestoreHelpers.getFollowUpsForPatient(currentUser.uid);
+          if (followups.length > 0) {
+            const last = followups[0];
+            setContacted(last.contactedProvider ? 'yes' : 'no');
+            setScheduled(last.scheduledAppointment ? 'yes' : 'no');
+            setBarrier(last.blocker !== 'none' ? last.blocker : null);
+          }
+        } catch (e) {
+          console.error("Error loading follow up:", e);
+        }
+      } else {
+        const stored = localStorage.getItem('wisecare.followup');
+        if (stored) {
+          try {
+            const state = JSON.parse(stored);
+            if (state.contacted) setContacted(state.contacted);
+            if (state.scheduled) setScheduled(state.scheduled);
+            if (state.barrier) setBarrier(state.barrier);
+            if (state.symptoms) setSymptoms(state.symptoms);
+          } catch (e) {
+            console.warn('Failed to parse cached follow up state', e);
+          }
+        }
       }
+      setLoading(false);
     }
-  }, []);
+    loadData();
+  }, [currentUser, isFirebaseMode]);
 
   const persist = (updatedState: any) => {
     localStorage.setItem('wisecare.followup', JSON.stringify({
@@ -95,11 +121,32 @@ export default function FollowUpPage() {
     setTimeout(() => setToastMsg(null), 2000);
   };
 
-  const handleSave = () => {
-    persist({});
+  const handleSave = async () => {
+    if (isFirebaseMode && currentUser) {
+      try {
+        const profile = await firestoreHelpers.getPatientProfile(currentUser.uid);
+        const referralId = profile?.activeReferralId || 'none';
+
+        await firestoreHelpers.createFollowUp({
+          patientId: currentUser.uid,
+          referralId,
+          contactedProvider: contacted === 'yes' || contacted === 'partial',
+          scheduledAppointment: scheduled === 'yes',
+          blocker: barrier || 'none',
+          recommendedAdjustment: advice ? advice.t : 'Keep checking in',
+          nextBestActions: advice ? [advice.action] : [],
+          createdAt: null,
+        });
+        persist({});
+      } catch (e) {
+        console.error("Error saving follow-up: ", e);
+      }
+    } else {
+      persist({});
+    }
     showToast('Check-in saved!');
     setTimeout(() => {
-      window.location.href = '/dashboard';
+      router.push('/dashboard');
     }, 900);
   };
 
@@ -277,5 +324,13 @@ export default function FollowUpPage() {
 
       </div>
     </AppShell>
+  );
+}
+
+export default function FollowUpPage() {
+  return (
+    <ProtectedRoute allowedRoles={['patient']}>
+      <FollowUpPageContent />
+    </ProtectedRoute>
   );
 }

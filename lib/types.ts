@@ -64,7 +64,7 @@ export interface Referral {
   received: string;
   insurance: string;
   summary: string;
-  status?: 'accepted' | 'declined' | 'waitlisted' | 'pending';
+  status?: 'accepted' | 'declined' | 'waitlisted' | 'pending' | 'request_info' | 'withdrawn';
   providerId?: string;
   providerName?: string;
 }

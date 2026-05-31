@@ -13,18 +13,48 @@ const INITIAL_PENDING = [
   { id: 'pp-303', name: 'Westbrook Counseling', license: 'LMFT · OR #LMF21998', specialty: 'Relationships, Burnout', insurance: 'Sliding scale, Self-pay', state: 'OR', submitted: '2 days ago' },
 ];
 
-export default function AdminDashboard() {
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import { useAuth } from '@/components/auth/AuthProvider';
+import { firestoreHelpers } from '@/lib/firebase/firestore';
+
+function AdminDashboardContent() {
+  const { currentUser, isFirebaseMode } = useAuth();
   const [pending, setPending] = useState<any[]>([]);
 
   useEffect(() => {
-    const stored = storage.getStorageItem<any[]>('wisecare.pendingProviders', []);
-    if (stored.length > 0) {
-      setPending(stored);
-    } else {
-      setPending(INITIAL_PENDING);
-      storage.setStorageItem('wisecare.pendingProviders', INITIAL_PENDING);
+    async function loadData() {
+      if (isFirebaseMode) {
+        try {
+          const reqs = await firestoreHelpers.getVerificationRequests();
+          const pendingReqs = reqs.filter(r => r.status === 'pending');
+          const mapped = pendingReqs.map(r => ({
+            id: r.requestId || '',
+            name: `${r.providerType === 'solo_provider' ? 'Solo' : 'Org'} Clinic (${r.providerId.substring(0, 5)})`,
+            license: `Submitter: ${r.submittedBy}`,
+            specialty: r.notes || 'Awaiting credential review',
+            insurance: 'Validation Request',
+            state: 'CA',
+            submitted: r.createdAt && r.createdAt.seconds 
+              ? new Date(r.createdAt.seconds * 1000).toLocaleDateString()
+              : 'Just now'
+          }));
+          setPending(mapped);
+        } catch (e) {
+          console.error("Error loading verification requests:", e);
+        }
+      } else {
+        const stored = storage.getStorageItem<any[]>('wisecare.pendingProviders', []);
+        if (stored.length > 0) {
+          setPending(stored);
+        } else {
+          setPending(INITIAL_PENDING);
+          storage.setStorageItem('wisecare.pendingProviders', INITIAL_PENDING);
+        }
+      }
     }
-  }, []);
+
+    loadData();
+  }, [currentUser, isFirebaseMode]);
 
   const getInitials = (name: string) => {
     return name
@@ -261,12 +291,20 @@ export default function AdminDashboard() {
           <div>
             <strong style={{ color: 'var(--fg)' }}>Admin scope reminder.</strong> Wise Care admin oversees directory health, system performance, and safety routing. Admins do not access individual user health information; that's restricted to providers, with user consent.
             <div className="text-[12px] text-wise-muted mt-2">
-              For this prototype, your information is stored locally in this browser session. Nothing is shared unless you explicitly choose to send a simulated connection request.
+              This is a demo prototype. Do not enter real medical or personal health information. Wise Care does not claim HIPAA compliance, perform real credential verification, or store production medical records.
             </div>
           </div>
         </div>
 
       </div>
     </AppShell>
+  );
+}
+
+export default function AdminDashboard() {
+  return (
+    <ProtectedRoute allowedRoles={['admin']}>
+      <AdminDashboardContent />
+    </ProtectedRoute>
   );
 }
