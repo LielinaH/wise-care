@@ -139,7 +139,7 @@ export default function AppShell({ children, title, crumbs = [], actions }: AppS
         ))}
       </div>
 
-      <div className="mt-auto">
+      <div className="sidebar-foot">
         <DemoRoleSwitcher />
         <Link href="/" className="nav-item mt-2 text-xs text-wise-muted hover:text-wise-fg">
           <ArrowLeft className="w-3.5 h-3.5" /> Back to landing

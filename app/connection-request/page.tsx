@@ -8,7 +8,9 @@ import { storage } from '@/lib/storage';
 import { Provider, Referral, CarePacket } from '@/lib/types';
 import { MOCK_PROVIDERS } from '@/lib/data/mockProviders';
 import { MOCK_REFERRALS } from '@/lib/data/mockReferrals';
-import { Check, Send, AlertTriangle, ShieldCheck, ArrowLeft, Loader2 } from 'lucide-react';
+import { Check, Send, ArrowLeft, Loader2 } from 'lucide-react';
+import Notice from '@/components/ui/Notice';
+import PremiumCard from '@/components/ui/PremiumCard';
 
 function ConnectionRequestContent() {
   const router = useRouter();
@@ -95,10 +97,10 @@ function ConnectionRequestContent() {
           <Check className="w-8 h-8 text-wise-success-deep font-bold" />
         </div>
         <div className="space-y-2">
-          <h2 className="text-2xl font-display font-semibold tracking-tight text-wise-fg">Connection Request Sent!</h2>
-          <p className="text-sm text-wise-muted leading-relaxed max-w-[42ch] mx-auto">
-            Your Care Packet has been structured and securely forwarded to <strong>{provider.name}</strong>. 
-            The clinic intake coordinator will review details and follow up within 2–3 business days.
+          <h2 className="text-2xl font-display font-semibold tracking-tight text-wise-fg">Connection Request Sent (Simulated)!</h2>
+          <p className="text-sm text-wise-muted leading-relaxed max-w-[42ch] mx-auto font-medium">
+            For this prototype, your information is stored locally in this browser session. A simulated connection request has been sent to <strong>{provider.name}</strong>. 
+            The clinic intake coordinator will review details and follow up within 2–3 business days (simulated).
           </p>
         </div>
         
@@ -127,43 +129,39 @@ function ConnectionRequestContent() {
     <div className="max-w-[640px] mx-auto space-y-6 enter">
       
       {/* Top Header info */}
-      <div className="card bg-wise-surface border border-wise-hairline rounded-2xl p-5 shadow-sm">
-        <span className="kicker">Connection Portal</span>
-        <h2 className="text-lg font-semibold tracking-tight mt-1">Connect with {provider.name}</h2>
-        <p className="text-xs text-wise-muted mt-1 leading-relaxed">
+      <PremiumCard variant="standard" kicker="Connection Portal" title={`Connect with ${provider.name}`}>
+        <p className="text-xs text-wise-muted leading-relaxed">
           Review the pre-drafted summary below before releasing details to the coordinator queue.
         </p>
-      </div>
+      </PremiumCard>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         
         {/* Provider summary briefing block */}
-        <div className="card bg-wise-surface border border-wise-hairline rounded-2xl p-5 shadow-sm space-y-3">
-          <h3 className="text-sm font-semibold">1. Clinic Information</h3>
-          <div className="p-4 bg-wise-surface-2 border border-wise-hairline rounded-xl grid grid-cols-2 gap-3 text-xs">
+        <PremiumCard variant="standard" title="1. Clinic Information">
+          <div className="p-4 bg-wise-surface-sunk border border-wise-hairline rounded-xl grid grid-cols-2 gap-3 text-xs mt-3">
             <div>
-              <span className="text-wise-muted block">Provider Name</span>
+              <span className="text-wise-muted block text-[11px]">Provider Name</span>
               <span className="font-semibold text-wise-fg-soft">{provider.name}</span>
             </div>
             <div>
-              <span className="text-wise-muted block">Care Modality</span>
+              <span className="text-wise-muted block text-[11px]">Care Modality</span>
               <span className="font-semibold text-wise-fg-soft">{provider.type}</span>
             </div>
             <div>
-              <span className="text-wise-muted block">Accepting Availability</span>
+              <span className="text-wise-muted block text-[11px]">Accepting Availability</span>
               <span className="font-semibold text-wise-fg-soft">{provider.nextAvailable}</span>
             </div>
             <div>
-              <span className="text-wise-muted block">Estimated Cost</span>
+              <span className="text-wise-muted block text-[11px]">Estimated Cost</span>
               <span className="font-semibold text-wise-fg-soft">{provider.sessionCost}</span>
             </div>
           </div>
-        </div>
+        </PremiumCard>
 
         {/* Edit Message block */}
-        <div className="card bg-wise-surface border border-wise-hairline rounded-2xl p-5 shadow-sm space-y-3">
-          <h3 className="text-sm font-semibold">2. Customize Outreach Message</h3>
-          <p className="text-xs text-wise-muted leading-relaxed">
+        <PremiumCard variant="standard" title="2. Customize Outreach Message">
+          <p className="text-xs text-wise-muted leading-relaxed mb-3">
             This message will be sent to the clinic coordinator. You can edit this text freely.
           </p>
           <textarea
@@ -172,13 +170,11 @@ function ConnectionRequestContent() {
             className="textarea w-full p-4.5 bg-wise-surface-sunk border border-wise-border rounded-xl text-xs font-mono min-h-[140px] focus:ring-0 leading-relaxed cursor-text"
             required
           />
-        </div>
+        </PremiumCard>
 
         {/* Privacy Consent block */}
-        <div className="card bg-wise-surface border border-wise-hairline rounded-2xl p-5 shadow-sm space-y-3">
-          <h3 className="text-sm font-semibold">3. Shared Information & Consent</h3>
-          
-          <div className="p-3.5 bg-wise-surface-2 border border-wise-hairline rounded-xl text-xs text-wise-fg-soft leading-relaxed space-y-2">
+        <PremiumCard variant="standard" title="3. Shared Information & Consent">
+          <div className="p-3.5 bg-wise-surface-sunk border border-wise-hairline rounded-xl text-xs text-wise-fg-soft leading-relaxed space-y-2 my-3">
             <span className="font-semibold text-wise-teal-deep text-[10px] uppercase tracking-wider block">Briefing Summary to be Shared:</span>
             <p className="italic font-mono">"{packet?.shareableSummary || 'Awaiting summary check-in...'}"</p>
           </div>
@@ -195,7 +191,7 @@ function ConnectionRequestContent() {
               I consent to share my Wise Care Intake summary and shareable summary with {provider.name}.
             </span>
           </label>
-        </div>
+        </PremiumCard>
 
         {/* Buttons */}
         <div className="flex justify-between items-center pt-2">
@@ -224,13 +220,9 @@ function ConnectionRequestContent() {
 
       </form>
       
-      {/* Disclaimer */}
-      <div className="notice flex items-start gap-3 bg-wise-surface-2 border border-wise-hairline rounded-xl p-4 text-[13px]">
-        <ShieldCheck className="w-5 h-5 text-wise-muted shrink-0 mt-0.5" />
-        <div className="text-wise-fg-soft leading-normal">
-          <strong>Security Notice:</strong> Releasing details forward is done over encrypted sessions. Your employer or university will never receive notice of this referral.
-        </div>
-      </div>
+      <Notice variant="standard" title="Security & Privacy">
+        For this prototype, your information is stored locally in this browser session. Nothing is shared unless you explicitly choose to send a simulated connection request. Your employer or university will never receive notice of this referral.
+      </Notice>
 
     </div>
   );

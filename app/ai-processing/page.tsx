@@ -3,8 +3,9 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { storage } from '@/lib/storage';
-import { Loader2, Check, AlertTriangle, ShieldCheck } from 'lucide-react';
 import AppShell from '@/components/layout/AppShell';
+import AgentStatusCard from '@/components/ui/AgentStatusCard';
+import Notice from '@/components/ui/Notice';
 
 interface AgentStep {
   name: string;
@@ -113,55 +114,32 @@ export default function AIProcessingPage() {
         </p>
 
         {errorMsg ? (
-          <div className="p-5 bg-wise-danger-soft border border-wise-danger/20 rounded-2xl text-left flex gap-3 text-wise-danger">
-            <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
-            <div>
-              <strong className="block text-sm font-semibold mb-1">Process Blocked</strong>
-              <span className="text-xs">{errorMsg}</span>
-              <button 
-                onClick={() => router.push('/intake')}
-                className="btn btn-sm bg-wise-danger text-white text-xs font-semibold mt-3"
-              >
-                Return to Intake
-              </button>
-            </div>
-          </div>
+          <Notice variant="danger" title="Process Blocked" className="text-left">
+            <span className="text-xs block mt-1">{errorMsg}</span>
+            <button 
+              onClick={() => router.push('/intake')}
+              className="btn btn-sm bg-wise-danger text-white text-xs font-semibold mt-3"
+            >
+              Return to Intake
+            </button>
+          </Notice>
         ) : (
           <div className="card bg-wise-surface border border-wise-hairline rounded-2xl p-5 shadow-sm text-left divide-y divide-wise-hairline">
             {steps.map((s, idx) => (
-              <div key={idx} className="py-4 first:pt-0 last:pb-0 flex items-start gap-4">
-                <div className="shrink-0 mt-0.5">
-                  {s.status === 'completed' && (
-                    <span className="w-5 h-5 rounded-full bg-wise-success-soft text-wise-success flex items-center justify-center font-bold text-[10px]">
-                      <Check className="w-3.5 h-3.5" />
-                    </span>
-                  )}
-                  {s.status === 'running' && (
-                    <Loader2 className="w-5 h-5 text-wise-teal spin" />
-                  )}
-                  {s.status === 'pending' && (
-                    <span className="w-5 h-5 rounded-full bg-wise-surface-sunk text-wise-muted-2 flex items-center justify-center font-mono text-[9.5px]">
-                      {idx + 1}
-                    </span>
-                  )}
-                </div>
-                <div>
-                  <div className={`text-sm font-semibold ${s.status === 'running' ? 'text-wise-teal-deep' : s.status === 'completed' ? 'text-wise-fg-soft' : 'text-wise-muted'}`}>
-                    {s.name}
-                  </div>
-                  <div className="text-xs text-wise-muted mt-0.5">{s.desc}</div>
-                </div>
-              </div>
+              <AgentStatusCard
+                key={idx}
+                name={s.name}
+                desc={s.desc}
+                status={s.status}
+                stepNumber={idx + 1}
+              />
             ))}
           </div>
         )}
 
-        <div className="notice mt-8 flex items-start gap-3 bg-wise-surface-2 border border-wise-hairline rounded-xl p-4 text-[13px] text-left">
-          <ShieldCheck className="w-5 h-5 text-wise-muted shrink-0 mt-0.5" />
-          <div className="text-wise-fg-soft leading-normal">
-            <strong>Security Notice:</strong> Your information is handled securely within this local browser session. No medical claims or diagnoses are generated.
-          </div>
-        </div>
+        <Notice className="mt-8 text-left" title="Security & Privacy">
+          For this prototype, your information is stored locally in this browser session. Nothing is shared unless you explicitly choose to send a simulated connection request. No medical claims or diagnoses are generated.
+        </Notice>
 
       </div>
     </AppShell>

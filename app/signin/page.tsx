@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { storage } from '@/lib/storage';
 import { User, Shield, Stethoscope, BarChart3, ChevronRight } from 'lucide-react';
+import Notice from '@/components/ui/Notice';
 
 const ROLES = [
   {
@@ -101,9 +102,9 @@ export default function SignInPage() {
             })}
           </div>
 
-          <div className="mt-8 text-center p-4 bg-wise-surface-2 border border-wise-hairline rounded-xl text-xs text-wise-muted leading-relaxed">
-            <strong>Demo Notice:</strong> No passwords or credentials are required for this prototype. State is maintained in your browser's local storage.
-          </div>
+          <Notice variant="brand" className="mt-8" title="Demo Environment">
+            No credentials are required for this check-in. For this prototype, your information is stored locally in this browser session. Nothing is shared unless you explicitly choose to send a simulated connection request.
+          </Notice>
         </div>
       </div>
     </div>

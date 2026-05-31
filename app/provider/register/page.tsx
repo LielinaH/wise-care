@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/layout/AppShell';
 import { storage } from '@/lib/storage';
-import { Stethoscope, Check, ArrowRight, ShieldCheck, Info } from 'lucide-react';
+import { Stethoscope, Check, ArrowRight } from 'lucide-react';
+import PremiumCard from '@/components/ui/PremiumCard';
+import Notice from '@/components/ui/Notice';
 
 const SPECIALTIES = ['Anxiety', 'Depression', 'Mood', 'Sleep', 'Burnout', 'Relationships', 'Trauma', 'Substance use'];
 const INSURANCES = ['Private Plan A', 'Private Plan B', 'Marketplace Plan', 'Public Coverage', 'Self-pay', 'Sliding scale'];
@@ -73,44 +75,47 @@ export default function ProviderRegister() {
         </div>
       )}
 
-      <div className="max-w-[720px] mx-auto space-y-6 enter">
+      <div className="max-w-[720px] mx-auto space-y-6 enter-stagger">
         
         {/* Intro */}
-        <div className="card bg-wise-surface border border-wise-hairline rounded-2xl p-5 shadow-sm flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-wise-teal-soft text-wise-teal-deep flex items-center justify-center shrink-0">
-            <Stethoscope className="w-5 h-5" />
+        <PremiumCard variant="bezel">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 rounded-xl bg-wise-teal-soft text-wise-teal-deep flex items-center justify-center shrink-0">
+              <Stethoscope className="w-5 h-5 text-wise-teal-deep" />
+            </div>
+            <div>
+              <h2 className="text-base font-semibold">Clinician Directory Management</h2>
+              <p className="text-xs text-wise-muted mt-0.5 leading-relaxed">
+                Configure your listing preferences. This state will dynamically affect matching compatibility calculations when individuals search for care routes.
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-base font-semibold">Clinician Directory Management</h2>
-            <p className="text-xs text-wise-muted mt-0.5 leading-relaxed">
-              Configure your listing preferences. This state will dynamically affect matching compatibility calculations when individuals search for care routes.
-            </p>
-          </div>
-        </div>
+        </PremiumCard>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           
           {/* Base credentials */}
-          <div className="card bg-wise-surface border border-wise-hairline rounded-2xl p-5 md:p-6 shadow-sm space-y-4">
-            <h3 className="text-sm font-semibold border-b border-wise-hairline pb-2">1. Credentials & Directory Information</h3>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="field flex flex-col gap-1">
+          <PremiumCard
+            variant="standard"
+            title="1. Credentials & Directory Information"
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+              <div className="field flex flex-col gap-1.5">
                 <label className="field-label text-xs font-semibold text-wise-fg-soft">Provider or Clinic Name</label>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="input p-3 text-sm border border-wise-border rounded-xl bg-wise-surface"
+                  className="input p-3 text-sm border border-wise-border rounded-xl bg-wise-surface focus:outline-none focus:border-wise-teal"
                   required
                 />
               </div>
-              <div className="field flex flex-col gap-1">
+              <div className="field flex flex-col gap-1.5">
                 <label className="field-label text-xs font-semibold text-wise-fg-soft">Provider Type</label>
                 <select
                   value={type}
                   onChange={(e) => setType(e.target.value)}
-                  className="select p-3 text-sm border border-wise-border rounded-xl bg-wise-surface"
+                  className="select p-3 text-sm border border-wise-border rounded-xl bg-wise-surface focus:outline-none focus:border-wise-teal"
                 >
                   <option>Therapist</option>
                   <option>Medication evaluation</option>
@@ -121,26 +126,26 @@ export default function ProviderRegister() {
               </div>
             </div>
 
-            <div className="field flex flex-col gap-1">
+            <div className="field flex flex-col gap-1.5 mt-4">
               <label className="field-label text-xs font-semibold text-wise-fg-soft">Licensure / State Scope</label>
               <input
                 type="text"
                 value={license}
                 onChange={(e) => setLicense(e.target.value)}
-                className="input p-3 text-sm border border-wise-border rounded-xl bg-wise-surface"
+                className="input p-3 text-sm border border-wise-border rounded-xl bg-wise-surface focus:outline-none focus:border-wise-teal"
                 required
               />
               <span className="field-hint text-[11px] text-wise-muted">Example: LCSW · CA #LCS24011</span>
             </div>
-          </div>
+          </PremiumCard>
 
           {/* Specialties checkboxes */}
-          <div className="card bg-wise-surface border border-wise-hairline rounded-2xl p-5 md:p-6 shadow-sm space-y-3">
-            <h3 className="text-sm font-semibold border-b border-wise-hairline pb-2">2. Specialty Focus Tags</h3>
-            <p className="text-xs text-wise-muted leading-relaxed">
-              Select which mental health areas you specialize in. Users matching these concerns will see higher score compatibility.
-            </p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2">
+          <PremiumCard
+            variant="standard"
+            title="2. Specialty Focus Tags"
+            sub="Select which mental health areas you specialize in. Users matching these concerns will see higher score compatibility."
+          >
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 mt-4">
               {SPECIALTIES.map(s => {
                 const isSelected = selectedSpecs.includes(s);
                 return (
@@ -157,15 +162,15 @@ export default function ProviderRegister() {
                 );
               })}
             </div>
-          </div>
+          </PremiumCard>
 
           {/* Insurance checkboxes */}
-          <div className="card bg-wise-surface border border-wise-hairline rounded-2xl p-5 md:p-6 shadow-sm space-y-3">
-            <h3 className="text-sm font-semibold border-b border-wise-hairline pb-2">3. Payment & Insurances Accepted</h3>
-            <p className="text-xs text-wise-muted leading-relaxed">
-              Select all payment types and insurances you support.
-            </p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-2">
+          <PremiumCard
+            variant="standard"
+            title="3. Payment & Insurances Accepted"
+            sub="Select all payment types and insurances you support."
+          >
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-2 mt-4">
               {INSURANCES.map(i => {
                 const isSelected = selectedInsurances.includes(i);
                 return (
@@ -183,54 +188,55 @@ export default function ProviderRegister() {
               })}
             </div>
             
-            <div className="flex items-center gap-2 pt-3">
+            <div className="flex items-center gap-2 pt-4 border-t border-wise-hairline mt-4">
               <input
                 type="checkbox"
                 id="sliding"
                 checked={slidingScale}
                 onChange={(e) => setSlidingScale(e.target.checked)}
-                className="w-4 h-4 rounded border-wise-border text-wise-teal"
+                className="w-4 h-4 rounded border-wise-border text-wise-teal cursor-pointer"
               />
               <label htmlFor="sliding" className="text-xs text-wise-fg-soft font-semibold select-none cursor-pointer">
                 I offer sliding scale slots for cost-sensitive clients
               </label>
             </div>
-          </div>
+          </PremiumCard>
 
           {/* Costs & availability */}
-          <div className="card bg-wise-surface border border-wise-hairline rounded-2xl p-5 md:p-6 shadow-sm space-y-4">
-            <h3 className="text-sm font-semibold border-b border-wise-hairline pb-2">4. Availability & Cost Details</h3>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="field flex flex-col gap-1">
+          <PremiumCard
+            variant="standard"
+            title="4. Availability & Cost Details"
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+              <div className="field flex flex-col gap-1.5">
                 <label className="field-label text-xs font-semibold text-wise-fg-soft">Standard Session Cost</label>
                 <input
                   type="text"
                   value={cost}
                   onChange={(e) => setCost(e.target.value)}
-                  className="input p-3 text-sm border border-wise-border rounded-xl bg-wise-surface"
+                  className="input p-3 text-sm border border-wise-border rounded-xl bg-wise-surface focus:outline-none focus:border-wise-teal"
                   placeholder="e.g. $140 / session"
                   required
                 />
               </div>
-              <div className="field flex flex-col gap-1">
+              <div className="field flex flex-col gap-1.5">
                 <label className="field-label text-xs font-semibold text-wise-fg-soft">Next Available Slot</label>
                 <input
                   type="text"
                   value={availability}
                   onChange={(e) => setAvailability(e.target.value)}
-                  className="input p-3 text-sm border border-wise-border rounded-xl bg-wise-surface"
+                  className="input p-3 text-sm border border-wise-border rounded-xl bg-wise-surface focus:outline-none focus:border-wise-teal"
                   placeholder="e.g. Wed · 7 days"
                   required
                 />
               </div>
             </div>
 
-            <div className="field flex flex-col gap-1">
+            <div className="field flex flex-col gap-1.5 mt-4 pt-4 border-t border-wise-hairline">
               <label className="field-label text-xs font-semibold text-wise-fg-soft">Preferred Modalities</label>
               <div className="flex gap-4 text-xs pt-1">
                 {['Telehealth', 'In-person'].map(m => (
-                  <label key={m} className="flex items-center gap-1.5 cursor-pointer">
+                  <label key={m} className="flex items-center gap-1.5 cursor-pointer select-none">
                     <input
                       type="checkbox"
                       checked={modalities.includes(m)}
@@ -238,18 +244,18 @@ export default function ProviderRegister() {
                         if (e.target.checked) setModalities(prev => [...prev, m]);
                         else setModalities(prev => prev.filter(item => item !== m));
                       }}
-                      className="w-4 h-4 rounded border-wise-border text-wise-teal"
+                      className="w-4 h-4 rounded border-wise-border text-wise-teal cursor-pointer"
                     />
                     <span>{m}</span>
                   </label>
                 ))}
               </div>
             </div>
-          </div>
+          </PremiumCard>
 
           {/* Form submits */}
           <div className="flex justify-end pt-2">
-            <button type="submit" className="btn btn-primary btn-sm flex items-center gap-1">
+            <button type="submit" className="btn btn-primary btn-sm flex items-center gap-1.5">
               Save profile settings
               <ArrowRight className="w-3.5 h-3.5 text-white" />
             </button>
@@ -257,13 +263,10 @@ export default function ProviderRegister() {
 
         </form>
 
-        {/* Security Warning */}
-        <div className="notice flex items-start gap-3 bg-wise-surface-2 border border-wise-hairline rounded-xl p-4 text-[13px]">
-          <ShieldCheck className="w-5 h-5 text-wise-muted shrink-0 mt-0.5" />
-          <div className="text-wise-fg-soft leading-normal">
-            <strong>Listing Security:</strong> Wise Care operates as a closed network routing utility. Changes take effect in real time inside this local session.
-          </div>
-        </div>
+        {/* Prototype Disclaimer */}
+        <Notice variant="standard">
+          For this prototype, your information is stored locally in this browser session. Nothing is shared unless you explicitly choose to send a simulated connection request.
+        </Notice>
 
       </div>
     </AppShell>

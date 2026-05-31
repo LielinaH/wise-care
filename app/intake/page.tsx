@@ -3,10 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useForm, Controller } from 'react-hook-form';
-import { Check, ArrowLeft, ArrowRight, ShieldCheck, AlertTriangle, Info } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { Check, AlertTriangle } from 'lucide-react';
 import { storage } from '@/lib/storage';
 import AppShell from '@/components/layout/AppShell';
+import Notice from '@/components/ui/Notice';
+import PremiumCard from '@/components/ui/PremiumCard';
+import Badge from '@/components/ui/Badge';
 import { IntakeAnswers } from '@/lib/types';
 
 // Let's define the steps
@@ -62,7 +65,7 @@ export default function IntakePage() {
   const [stepIndex, setStepIndex] = useState(0);
 
   // Use react-hook-form
-  const { register, handleSubmit, watch, setValue, control } = useForm<IntakeAnswers>({
+  const { register, watch, setValue } = useForm<IntakeAnswers>({
     defaultValues: {
       concerns: [],
       concernDetail: '',
@@ -106,7 +109,19 @@ export default function IntakePage() {
   }, [setValue]);
 
   const saveState = (nextStep: number) => {
-    const currentValues = watch();
+    const currentValues = {
+      concerns: watchedConcerns,
+      concernDetail: watchedConcernDetail,
+      duration: watchedDuration,
+      intensity: watchedIntensity,
+      impact: watchedImpact,
+      safety: watchedSafety,
+      preference: watchedPreference,
+      insurance: watchedInsurance,
+      modality: watchedModality,
+      stateName: watchedStateName,
+      urgency: watchedUrgency,
+    };
     storage.setIntake(currentValues);
     storage.setIntakeStep(nextStep);
     setStepIndex(nextStep);
@@ -118,7 +133,19 @@ export default function IntakePage() {
       saveState(stepIndex + 1);
     } else {
       // Final submission trigger
-      const finalData = watch();
+      const finalData = {
+        concerns: watchedConcerns,
+        concernDetail: watchedConcernDetail,
+        duration: watchedDuration,
+        intensity: watchedIntensity,
+        impact: watchedImpact,
+        safety: watchedSafety,
+        preference: watchedPreference,
+        insurance: watchedInsurance,
+        modality: watchedModality,
+        stateName: watchedStateName,
+        urgency: watchedUrgency,
+      };
       storage.setIntake(finalData);
       storage.setIntakeStep(0); // Reset step tracking
       router.push('/ai-processing');
@@ -164,421 +191,385 @@ export default function IntakePage() {
     }>
       <div className="max-w-[720px] mx-auto space-y-6">
         
-        {/* Progress bar */}
+        {/* Progress bar using custom CSS variables */}
         <div className="bg-wise-bg sticky top-[78px] z-10 py-3 border-b border-wise-hairline">
           <div className="flex justify-between items-center mb-2.5 text-xs text-wise-muted">
             <span className="font-medium">Step {stepIndex + 1} of {STEPS.length}</span>
-            <div className="flex-1 max-w-[200px] md:max-w-[320px] h-1.5 bg-wise-surface-sunk rounded-full mx-4 overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-wise-teal-deep to-wise-teal transition-all duration-300" style={{ width: `${Math.max(8, pct)}%` }} />
+            <div className="progress-bar mx-4">
+              <div style={{ width: `${Math.max(8, pct)}%` }} />
             </div>
-            <span className="font-mono">{pct}%</span>
+            <span className="mono">{pct}%</span>
           </div>
-          <div className="flex gap-1">
+          <div className="step-rail">
             {STEPS.map((_, i) => (
-              <span key={i} className={`flex-1 h-1 rounded ${i < stepIndex ? 'bg-wise-teal-deep' : i === stepIndex ? 'bg-wise-teal' : 'bg-wise-surface-sunk'}`} />
+              <span key={i} className={`step ${i < stepIndex ? 'done' : i === stepIndex ? 'active' : ''}`} />
             ))}
           </div>
         </div>
 
-        {/* Step Card Container */}
-        <div className="card bezel border border-wise-hairline rounded-3xl bg-gradient-to-b from-wise-surface-2 to-wise-surface shadow-sm">
-          <div className="inner p-6 md:p-8">
-            <span className="kicker">Private intake · structured</span>
-            <h2 className="text-2xl font-display font-semibold tracking-tight my-2">{STEPS[stepIndex].title}</h2>
-            <p className="text-sm text-wise-muted mb-6">{STEPS[stepIndex].sub}</p>
+        {/* Step Card Container using PremiumCard bezel variant */}
+        <PremiumCard variant="bezel" className="enter">
+          <span className="kicker">Private intake · structured</span>
+          <h2 className="text-2xl font-display font-semibold tracking-tight my-2">{STEPS[stepIndex].title}</h2>
+          <p className="text-sm text-wise-muted mb-6">{STEPS[stepIndex].sub}</p>
 
-            {/* Step 1: Concerns */}
-            {stepIndex === 0 && (
-              <div className="space-y-6">
-                <div className="choice-grid grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {CONCERN_OPTIONS.map((o) => {
-                    const isSelected = watchedConcerns.includes(o.v);
-                    return (
-                      <button
-                        key={o.v}
-                        type="button"
-                        onClick={() => handleConcernToggle(o.v)}
-                        className={`choice flex items-start gap-3 p-4 border rounded-xl transition-all ${
-                          isSelected ? 'selected border-wise-teal bg-wise-teal-soft shadow-inner' : 'border-wise-border hover:border-wise-border-2 bg-wise-surface'
-                        }`}
-                      >
-                        <span className={`check w-[18px] h-[18px] rounded border flex items-center justify-center shrink-0 ${
-                          isSelected ? 'border-wise-teal-deep bg-wise-teal-deep text-white' : 'border-wise-border-2 bg-wise-surface'
-                        }`}>
-                          {isSelected && <Check className="w-3 h-3 text-white" />}
-                        </span>
-                        <div>
-                          <div className="label text-sm font-semibold text-wise-fg">{o.l}</div>
-                          <div className="sub text-xs text-wise-muted mt-1 leading-normal">{o.s}</div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-                
-                <div className="field flex flex-col gap-1.5">
-                  <label className="field-label text-sm font-semibold text-wise-fg-soft">Anything you'd like to add? (optional)</label>
-                  <textarea
-                    {...register('concernDetail')}
-                    className="textarea w-full p-3 border border-wise-border rounded-xl text-sm min-h-[96px] bg-wise-surface"
-                    placeholder="A sentence or two helps a lot. You can be as brief as you want."
-                  />
-                  <span className="field-hint text-xs text-wise-muted">Your words go straight to your private summary. Nothing is shared without consent.</span>
-                </div>
-              </div>
-            )}
-
-            {/* Step 2: Timeline & Intensity */}
-            {stepIndex === 1 && (
-              <div className="space-y-6">
-                <div className="field">
-                  <label className="field-label text-sm font-semibold text-wise-fg-soft block mb-2">How long has this been happening?</label>
-                  <div className="choice-grid grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                    {[
-                      { v: 'days', l: 'A few days' },
-                      { v: 'weeks', l: 'A few weeks' },
-                      { v: 'months', l: 'A few months' },
-                      { v: 'longer', l: 'Longer than that' },
-                    ].map((d) => {
-                      const isSelected = watchedDuration === d.v;
-                      return (
-                        <button
-                          key={d.v}
-                          type="button"
-                          onClick={() => setValue('duration', d.v as any)}
-                          className={`choice flex items-center justify-center p-3.5 border rounded-xl text-center text-sm font-medium transition-all ${
-                            isSelected ? 'selected border-wise-teal bg-wise-teal-soft' : 'border-wise-border hover:border-wise-border-2 bg-wise-surface'
-                          }`}
-                        >
-                          {d.l}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="field flex flex-col gap-1.5 pt-4">
-                  <label className="field-label text-sm font-semibold text-wise-fg-soft">How intense does it feel — most days?</label>
-                  <div className="p-5 bg-wise-surface-2 border border-wise-hairline rounded-2xl flex flex-col items-center">
-                    <div className="text-4xl font-display font-semibold tracking-tight text-wise-teal-deep">
-                      {watchedIntensity}
-                      <span className="text-lg text-wise-muted font-normal"> / 10</span>
-                    </div>
-                    <div className="text-xs text-wise-muted mt-1">{intensityLabel(watchedIntensity)}</div>
-                    
-                    <input
-                      type="range"
-                      min="1"
-                      max="10"
-                      step="1"
-                      value={watchedIntensity}
-                      onChange={(e) => setValue('intensity', Number(e.target.value))}
-                      className="slider w-full mt-5 accent-wise-teal"
-                    />
-                    <div className="flex justify-between w-full text-[10px] font-mono text-wise-muted mt-2 uppercase tracking-wide">
-                      <span>Mild</span>
-                      <span>Moderate</span>
-                      <span>Significant</span>
-                      <span>Severe</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Step 3: Impact on Life */}
-            {stepIndex === 2 && (
-              <div className="choice-grid grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {IMPACT_OPTIONS.map((o) => {
-                  const isSelected = watchedImpact.includes(o.v);
+          {/* Step 1: Concerns */}
+          {stepIndex === 0 && (
+            <div className="space-y-6">
+              <div className="choice-grid">
+                {CONCERN_OPTIONS.map((o) => {
+                  const isSelected = watchedConcerns.includes(o.v);
                   return (
                     <button
                       key={o.v}
                       type="button"
-                      onClick={() => handleImpactToggle(o.v)}
-                      className={`choice flex items-center gap-3 p-4.5 border rounded-xl transition-all ${
-                        isSelected ? 'selected border-wise-teal bg-wise-teal-soft' : 'border-wise-border hover:border-wise-border-2 bg-wise-surface'
-                      }`}
+                      onClick={() => handleConcernToggle(o.v)}
+                      className={`choice ${isSelected ? 'selected' : ''}`}
                     >
-                      <span className={`check w-[18px] h-[18px] rounded border flex items-center justify-center shrink-0 ${
-                        isSelected ? 'border-wise-teal-deep bg-wise-teal-deep text-white' : 'border-wise-border-2 bg-wise-surface'
-                      }`}>
-                        {isSelected && <Check className="w-3 h-3 text-white" />}
+                      <span className="check">
+                        {isSelected && <Check className="w-3.5 h-3.5" />}
                       </span>
-                      <div className="label text-sm font-semibold text-wise-fg">{o.l}</div>
+                      <div>
+                        <div className="label">{o.l}</div>
+                        <div className="sub">{o.s}</div>
+                      </div>
                     </button>
                   );
                 })}
               </div>
-            )}
+              
+              <div className="field">
+                <label className="field-label">Anything you'd like to add? (optional)</label>
+                <textarea
+                  {...register('concernDetail')}
+                  className="textarea"
+                  placeholder="A sentence or two helps a lot. You can be as brief as you want."
+                />
+                <span className="field-hint">Your words go straight to your private summary. Nothing is shared without consent.</span>
+              </div>
+            </div>
+          )}
 
-            {/* Step 4: Safety Check */}
-            {stepIndex === 3 && (
-              <div className="space-y-6">
-                <div className="choice-grid grid grid-cols-1 gap-3">
-                  {SAFETY_OPTIONS.map((o) => {
-                    const isSelected = watchedSafety === o.v;
+          {/* Step 2: Timeline & Intensity */}
+          {stepIndex === 1 && (
+            <div className="space-y-6">
+              <div className="field">
+                <label className="field-label block mb-2">How long has this been happening?</label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  {[
+                    { v: 'days', l: 'A few days' },
+                    { v: 'weeks', l: 'A few weeks' },
+                    { v: 'months', l: 'A few months' },
+                    { v: 'longer', l: 'Longer than that' },
+                  ].map((d) => {
+                    const isSelected = watchedDuration === d.v;
+                    return (
+                      <button
+                        key={d.v}
+                        type="button"
+                        onClick={() => setValue('duration', d.v as any)}
+                        className={`choice justify-center text-center py-3.5 ${isSelected ? 'selected' : ''}`}
+                      >
+                        {d.l}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="field pt-4">
+                <label className="field-label">How intense does it feel — most days?</label>
+                <div className="p-5 bg-wise-surface-sunk border border-wise-hairline rounded-2xl flex flex-col items-center">
+                  <div className="text-4xl font-display font-semibold tracking-tight text-wise-teal-deep">
+                    {watchedIntensity}
+                    <span className="text-lg text-wise-muted font-normal"> / 10</span>
+                  </div>
+                  <div className="text-xs text-wise-muted mt-1">{intensityLabel(watchedIntensity)}</div>
+                  
+                  <input
+                    type="range"
+                    min="1"
+                    max="10"
+                    step="1"
+                    value={watchedIntensity}
+                    onChange={(e) => setValue('intensity', Number(e.target.value))}
+                    className="slider"
+                  />
+                  <div className="flex justify-between w-full text-[10px] font-mono text-wise-muted mt-2 uppercase tracking-wide">
+                    <span>Mild</span>
+                    <span>Moderate</span>
+                    <span>Significant</span>
+                    <span>Severe</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Impact on Life */}
+          {stepIndex === 2 && (
+            <div className="choice-grid">
+              {IMPACT_OPTIONS.map((o) => {
+                const isSelected = watchedImpact.includes(o.v);
+                return (
+                  <button
+                    key={o.v}
+                    type="button"
+                    onClick={() => handleImpactToggle(o.v)}
+                    className={`choice ${isSelected ? 'selected' : ''}`}
+                  >
+                    <span className="check">
+                      {isSelected && <Check className="w-3.5 h-3.5" />}
+                    </span>
+                    <div className="label">{o.l}</div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Step 4: Safety Check */}
+          {stepIndex === 3 && (
+            <div className="space-y-6">
+              <div className="choice-grid grid-cols-1">
+                {SAFETY_OPTIONS.map((o) => {
+                  const isSelected = watchedSafety === o.v;
+                  return (
+                    <button
+                      key={o.v}
+                      type="button"
+                      onClick={() => setValue('safety', o.v as any)}
+                      className={`choice ${isSelected ? 'selected' : ''}`}
+                    >
+                      <span className="check">
+                        {isSelected && <Check className="w-3.5 h-3.5" />}
+                      </span>
+                      <div>
+                        <div className="label">{o.l}</div>
+                        <div className="sub">{o.s}</div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Immediate crisis flag */}
+              {isCrisis && (
+                <Notice variant="danger" title="If you may be in immediate danger, please reach out now.">
+                  <p className="text-xs leading-relaxed opacity-95 mb-3.5">
+                    You do not need to finish this form. Wise Care is not a crisis service. Hotlines are confidential, free, and open 24/7.
+                  </p>
+                  <div className="flex flex-wrap gap-2.5">
+                    <a className="btn btn-sm bg-wise-danger text-white text-xs font-semibold hover:opacity-90" href="tel:988">Call or text 988</a>
+                    <a className="btn btn-sm border border-wise-danger text-wise-danger text-xs font-semibold hover:bg-wise-danger/10" href="https://988lifeline.org/chat/" target="_blank" rel="noreferrer">Chat online</a>
+                  </div>
+                </Notice>
+              )}
+            </div>
+          )}
+
+          {/* Step 5: Preferences and Barriers */}
+          {stepIndex === 4 && (
+            <div className="space-y-6">
+              {/* Support Type */}
+              <div className="field">
+                <label className="field-label block mb-2">What kind of support sounds right?</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {SUPPORT_OPTIONS.map((o) => {
+                    const isSelected = watchedPreference === o.v;
                     return (
                       <button
                         key={o.v}
                         type="button"
-                        onClick={() => setValue('safety', o.v as any)}
-                        className={`choice flex items-start gap-3.5 p-4.5 border rounded-xl transition-all ${
-                          isSelected ? 'selected border-wise-teal bg-wise-teal-soft' : 'border-wise-border hover:border-wise-border-2 bg-wise-surface'
-                        }`}
+                        onClick={() => setValue('preference', o.v as any)}
+                        className={`choice items-start ${isSelected ? 'selected' : ''}`}
                       >
-                        <span className={`check w-[18px] h-[18px] rounded border flex items-center justify-center shrink-0 ${
-                          isSelected ? 'border-wise-teal-deep bg-wise-teal-deep text-white' : 'border-wise-border-2 bg-wise-surface'
-                        }`}>
-                          {isSelected && <Check className="w-3 h-3 text-white" />}
+                        <span className="check mt-0.5">
+                          {isSelected && <Check className="w-2.5 h-2.5" />}
                         </span>
                         <div>
-                          <div className="label text-sm font-semibold text-wise-fg">{o.l}</div>
-                          <div className="sub text-xs text-wise-muted mt-1 leading-normal">{o.s}</div>
+                          <div className="label text-[13.5px] leading-tight">{o.l}</div>
+                          <div className="sub text-[11px] leading-normal">{o.s}</div>
                         </div>
                       </button>
                     );
                   })}
                 </div>
-
-                {/* Immediate crisis flag */}
-                {isCrisis && (
-                  <div className="p-5 bg-wise-danger-soft border border-wise-danger/25 rounded-2xl flex gap-4 mt-6">
-                    <div className="w-10 h-10 rounded-xl bg-wise-danger text-white flex items-center justify-center shrink-0">
-                      <AlertTriangle className="w-5 h-5 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-[15px] font-semibold text-wise-danger block mb-1">If you may be in immediate danger, please reach out now.</h3>
-                      <p className="text-xs text-wise-danger leading-relaxed opacity-90 mb-3.5">
-                        You do not have to finish this form. Wise Care is not a crisis service. Hotlines are confidential, free, and open 24/7.
-                      </p>
-                      <div className="flex flex-wrap gap-2.5">
-                        <a className="btn btn-sm bg-wise-danger text-white text-xs font-semibold hover:opacity-90" href="tel:988">Call or text 988</a>
-                        <a className="btn btn-sm border border-wise-danger text-wise-danger text-xs font-semibold hover:bg-wise-danger/10" href="https://988lifeline.org/chat/" target="_blank" rel="noreferrer">Chat online</a>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
-            )}
 
-            {/* Step 5: Preferences and Barriers */}
-            {stepIndex === 4 && (
-              <div className="space-y-6">
-                {/* Support Type */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3">
+                {/* Insurance */}
                 <div className="field">
-                  <label className="field-label text-sm font-semibold text-wise-fg-soft block mb-2">What kind of support sounds right?</label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {SUPPORT_OPTIONS.map((o) => {
-                      const isSelected = watchedPreference === o.v;
-                      return (
-                        <button
-                          key={o.v}
-                          type="button"
-                          onClick={() => setValue('preference', o.v as any)}
-                          className={`choice flex items-start gap-3 p-3.5 border rounded-xl text-left transition-all ${
-                            isSelected ? 'selected border-wise-teal bg-wise-teal-soft shadow-inner' : 'border-wise-border hover:border-wise-border-2 bg-wise-surface'
-                          }`}
-                        >
-                          <span className={`check w-4 h-4 rounded border flex items-center justify-center shrink-0 mt-0.5 ${
-                            isSelected ? 'border-wise-teal-deep bg-wise-teal-deep text-white' : 'border-wise-border-2 bg-wise-surface'
-                          }`}>
-                            {isSelected && <Check className="w-2.5 h-2.5 text-white" />}
-                          </span>
-                          <div>
-                            <div className="label text-[13.5px] font-semibold text-wise-fg leading-tight">{o.l}</div>
-                            <div className="sub text-[11px] text-wise-muted mt-0.5 leading-normal">{o.s}</div>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <label className="field-label">Insurance or payment preference</label>
+                  <select
+                    value={watchedInsurance}
+                    onChange={(e) => setValue('insurance', e.target.value)}
+                    className="select"
+                  >
+                    <option>Private Plan A</option>
+                    <option>Private Plan B</option>
+                    <option>Marketplace Plan</option>
+                    <option>Public Coverage</option>
+                    <option>Self-pay / sliding scale</option>
+                    <option>Uninsured</option>
+                    <option>I'm not sure</option>
+                  </select>
+                  <span className="field-hint">Helps us match providers you can actually cover.</span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3">
-                  {/* Insurance */}
-                  <div className="field flex flex-col gap-1.5">
-                    <label className="field-label text-sm font-semibold text-wise-fg-soft">Insurance or payment preference</label>
-                    <select
-                      value={watchedInsurance}
-                      onChange={(e) => setValue('insurance', e.target.value)}
-                      className="select w-full p-3 border border-wise-border rounded-xl text-sm bg-wise-surface"
-                    >
-                      <option>Private Plan A</option>
-                      <option>Private Plan B</option>
-                      <option>Marketplace Plan</option>
-                      <option>Public Coverage</option>
-                      <option>Self-pay / sliding scale</option>
-                      <option>Uninsured</option>
-                      <option>I'm not sure</option>
-                    </select>
-                    <span className="field-hint text-xs text-wise-muted">Helps us match providers you can actually cover.</span>
-                  </div>
-
-                  {/* State */}
-                  <div className="field flex flex-col gap-1.5">
-                    <label className="field-label text-sm font-semibold text-wise-fg-soft">State you live in</label>
-                    <select
-                      value={watchedStateName}
-                      onChange={(e) => setValue('stateName', e.target.value)}
-                      className="select w-full p-3 border border-wise-border rounded-xl text-sm bg-wise-surface"
-                    >
-                      {['California','Colorado','Florida','Illinois','Massachusetts','New York','Oregon','Texas','Washington']
-                        .map(s => <option key={s}>{s}</option>)}
-                    </select>
-                    <span className="field-hint text-xs text-wise-muted">Licensure rules require matching by physical location.</span>
-                  </div>
-                </div>
-
-                {/* Modality */}
-                <div className="field flex flex-col gap-1.5 pt-3">
-                  <label className="field-label text-sm font-semibold text-wise-fg-soft">Telehealth or in-person?</label>
-                  <div className="grid grid-cols-3 gap-2.5">
-                    {['Telehealth', 'In-person', 'Either is fine'].map((o) => {
-                      const isSelected = watchedModality === o;
-                      return (
-                        <button
-                          key={o}
-                          type="button"
-                          onClick={() => setValue('modality', o)}
-                          className={`choice flex items-center justify-center p-3 border rounded-xl text-sm font-medium transition-all ${
-                            isSelected ? 'selected border-wise-teal bg-wise-teal-soft' : 'border-wise-border hover:border-wise-border-2 bg-wise-surface'
-                          }`}
-                        >
-                          {o}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Urgency */}
-                <div className="field flex flex-col gap-1.5 pt-3">
-                  <label className="field-label text-sm font-semibold text-wise-fg-soft">How soon would you like a first appointment?</label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                    {[
-                      { v: 'asap', l: 'As soon as possible' },
-                      { v: '1-2w', l: 'Within 1–2 weeks' },
-                      { v: 'month', l: 'Within a month' },
-                      { v: 'flexible', l: 'No rush' },
-                    ].map((o) => {
-                      const isSelected = watchedUrgency === o.v;
-                      return (
-                        <button
-                          key={o.v}
-                          type="button"
-                          onClick={() => setValue('urgency', o.v as any)}
-                          className={`choice flex items-center justify-center p-3 border rounded-xl text-xs font-medium text-center transition-all ${
-                            isSelected ? 'selected border-wise-teal bg-wise-teal-soft' : 'border-wise-border hover:border-wise-border-2 bg-wise-surface'
-                          }`}
-                        >
-                          {o.l}
-                        </button>
-                      );
-                    })}
-                  </div>
+                {/* State */}
+                <div className="field">
+                  <label className="field-label">State you live in</label>
+                  <select
+                    value={watchedStateName}
+                    onChange={(e) => setValue('stateName', e.target.value)}
+                    className="select"
+                  >
+                    {['California','Colorado','Florida','Illinois','Massachusetts','New York','Oregon','Texas','Washington']
+                      .map(s => <option key={s}>{s}</option>)}
+                  </select>
+                  <span className="field-hint">Licensure rules require matching by physical location.</span>
                 </div>
               </div>
-            )}
 
-            {/* Step 6: Review Answers */}
-            {stepIndex === 5 && (
-              <div className="p-4.5 bg-wise-surface-2 border border-wise-hairline rounded-2xl space-y-4">
-                <div className="flex justify-between py-2 border-b border-wise-hairline gap-4">
-                  <span className="font-mono text-[10px] uppercase text-wise-muted tracking-wider shrink-0 w-32">Concerns</span>
-                  <div className="text-sm font-semibold text-wise-fg flex-1 text-right">
-                    <div className="flex flex-wrap gap-1 justify-end">
-                      {watchedConcerns.map(c => <span key={c} className="badge teal text-[10px]">{c}</span>)}
-                    </div>
-                    {watchedConcernDetail && <div className="text-xs text-wise-muted font-normal mt-1 italic">"{watchedConcernDetail}"</div>}
-                  </div>
-                </div>
-
-                <div className="flex justify-between py-2 border-b border-wise-hairline gap-4 items-center">
-                  <span className="font-mono text-[10px] uppercase text-wise-muted tracking-wider shrink-0 w-32">Timeline</span>
-                  <span className="text-sm font-semibold text-wise-fg text-right capitalize">A few {watchedDuration}</span>
-                </div>
-
-                <div className="flex justify-between py-2 border-b border-wise-hairline gap-4 items-center">
-                  <span className="font-mono text-[10px] uppercase text-wise-muted tracking-wider shrink-0 w-32">Intensity</span>
-                  <span className="text-sm font-semibold text-wise-fg text-right">{watchedIntensity} / 10</span>
-                </div>
-
-                <div className="flex justify-between py-2 border-b border-wise-hairline gap-4">
-                  <span className="font-mono text-[10px] uppercase text-wise-muted tracking-wider shrink-0 w-32">Daily impact</span>
-                  <div className="text-sm font-semibold text-wise-fg flex-1 text-right">
-                    <div className="flex flex-wrap gap-1 justify-end">
-                      {watchedImpact.map(i => <span key={i} className="badge text-[10px]">{i}</span>)}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex justify-between py-2 border-b border-wise-hairline gap-4 items-center">
-                  <span className="font-mono text-[10px] uppercase text-wise-muted tracking-wider shrink-0 w-32">Safety check</span>
-                  <span className={`badge ${watchedSafety === 'immediate' ? 'danger' : watchedSafety === 'recent' ? 'warn' : 'success'}`}>
-                    {watchedSafety === 'none' && 'No concerns'}
-                    {watchedSafety === 'passing' && 'Passing thoughts'}
-                    {watchedSafety === 'recent' && 'Worsening thoughts'}
-                    {watchedSafety === 'immediate' && 'Immediate concern'}
-                  </span>
-                </div>
-
-                <div className="flex justify-between py-2 border-b border-wise-hairline gap-4 items-center">
-                  <span className="font-mono text-[10px] uppercase text-wise-muted tracking-wider shrink-0 w-32">Support Pref</span>
-                  <span className="text-sm font-semibold text-wise-fg text-right capitalize">{watchedPreference}</span>
-                </div>
-
-                <div className="flex justify-between py-2 gap-4 items-center">
-                  <span className="font-mono text-[10px] uppercase text-wise-muted tracking-wider shrink-0 w-32">Details</span>
-                  <span className="text-sm font-semibold text-wise-fg text-right">
-                    {watchedModality} · {watchedStateName} · {watchedInsurance} · Urgency: {watchedUrgency}
-                  </span>
+              {/* Modality */}
+              <div className="field pt-3">
+                <label className="field-label">Telehealth or in-person?</label>
+                <div className="grid grid-cols-3 gap-2.5">
+                  {['Telehealth', 'In-person', 'Either is fine'].map((o) => {
+                    const isSelected = watchedModality === o;
+                    return (
+                      <button
+                        key={o}
+                        type="button"
+                        onClick={() => setValue('modality', o)}
+                        className={`choice justify-center py-3 ${isSelected ? 'selected' : ''}`}
+                      >
+                        {o}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
-            )}
 
-            {/* Form Footer Controls */}
-            <div className="step-foot border-t border-wise-hairline pt-5 mt-6 flex justify-between items-center">
-              <button
-                type="button"
-                onClick={handleBack}
-                className="btn btn-ghost btn-sm"
-                style={{ visibility: stepIndex === 0 ? 'hidden' : 'visible' }}
-              >
-                ← Back
-              </button>
-              
-              <span className="text-xs text-wise-muted">
-                {stepIndex < STEPS.length - 1 ? 'Your answers are auto-saved.' : 'Click below to run safety & routing review.'}
-              </span>
-              
-              <button
-                type="button"
-                onClick={handleNext}
-                disabled={stepIndex === 0 && watchedConcerns.length === 0}
-                className="btn btn-primary btn-sm disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {stepIndex === STEPS.length - 1 ? 'Submit & Review' : 'Next'}
-                <span className="inner flex items-center gap-1">→</span>
-              </button>
+              {/* Urgency */}
+              <div className="field pt-3">
+                <label className="field-label">How soon would you like a first appointment?</label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  {[
+                    { v: 'asap', l: 'As soon as possible' },
+                    { v: '1-2w', l: 'Within 1–2 weeks' },
+                    { v: 'month', l: 'Within a month' },
+                    { v: 'flexible', l: 'No rush' },
+                  ].map((o) => {
+                    const isSelected = watchedUrgency === o.v;
+                    return (
+                      <button
+                        key={o.v}
+                        type="button"
+                        onClick={() => setValue('urgency', o.v as any)}
+                        className={`choice justify-center text-xs text-center py-3 ${isSelected ? 'selected' : ''}`}
+                      >
+                        {o.l}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+          )}
 
-        {/* Notices */}
+          {/* Step 6: Review Answers */}
+          {stepIndex === 5 && (
+            <div className="p-4.5 bg-wise-surface-sunk border border-wise-hairline rounded-2xl space-y-4">
+              <div className="flex justify-between py-2 border-b border-wise-hairline gap-4">
+                <span className="font-mono text-[10px] uppercase text-wise-muted tracking-wider shrink-0 w-32">Concerns</span>
+                <div className="text-sm font-semibold text-wise-fg flex-1 text-right">
+                  <div className="flex flex-wrap gap-1 justify-end">
+                    {watchedConcerns.map(c => <Badge key={c} variant="teal" showDot={false} className="text-[10px]">{c}</Badge>)}
+                  </div>
+                  {watchedConcernDetail && <div className="text-xs text-wise-muted font-normal mt-1 italic">"{watchedConcernDetail}"</div>}
+                </div>
+              </div>
+
+              <div className="flex justify-between py-2 border-b border-wise-hairline gap-4 items-center">
+                <span className="font-mono text-[10px] uppercase text-wise-muted tracking-wider shrink-0 w-32">Timeline</span>
+                <span className="text-sm font-semibold text-wise-fg text-right capitalize">A few {watchedDuration}</span>
+              </div>
+
+              <div className="flex justify-between py-2 border-b border-wise-hairline gap-4 items-center">
+                <span className="font-mono text-[10px] uppercase text-wise-muted tracking-wider shrink-0 w-32">Intensity</span>
+                <span className="text-sm font-semibold text-wise-fg text-right">{watchedIntensity} / 10</span>
+              </div>
+
+              <div className="flex justify-between py-2 border-b border-wise-hairline gap-4">
+                <span className="font-mono text-[10px] uppercase text-wise-muted tracking-wider shrink-0 w-32">Daily impact</span>
+                <div className="text-sm font-semibold text-wise-fg flex-1 text-right">
+                  <div className="flex flex-wrap gap-1 justify-end">
+                    {watchedImpact.map(i => <Badge key={i} variant="standard" showDot={false} className="text-[10px]">{i}</Badge>)}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-between py-2 border-b border-wise-hairline gap-4 items-center">
+                <span className="font-mono text-[10px] uppercase text-wise-muted tracking-wider shrink-0 w-32">Safety check</span>
+                <Badge variant={watchedSafety === 'immediate' ? 'danger' : watchedSafety === 'recent' ? 'warn' : 'success'}>
+                  {watchedSafety === 'none' && 'No concerns'}
+                  {watchedSafety === 'passing' && 'Passing thoughts'}
+                  {watchedSafety === 'recent' && 'Worsening thoughts'}
+                  {watchedSafety === 'immediate' && 'Immediate concern'}
+                </Badge>
+              </div>
+
+              <div className="flex justify-between py-2 border-b border-wise-hairline gap-4 items-center">
+                <span className="font-mono text-[10px] uppercase text-wise-muted tracking-wider shrink-0 w-32">Support Pref</span>
+                <span className="text-sm font-semibold text-wise-fg text-right capitalize">{watchedPreference}</span>
+              </div>
+
+              <div className="flex justify-between py-2 gap-4 items-center">
+                <span className="font-mono text-[10px] uppercase text-wise-muted tracking-wider shrink-0 w-32">Details</span>
+                <span className="text-sm font-semibold text-wise-fg text-right">
+                  {watchedModality} · {watchedStateName} · {watchedInsurance} · Urgency: {watchedUrgency}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Form Footer Controls */}
+          <div className="step-foot border-t border-wise-hairline pt-5 mt-6 flex justify-between items-center">
+            <button
+              type="button"
+              onClick={handleBack}
+              className="btn btn-ghost btn-sm"
+              style={{ visibility: stepIndex === 0 ? 'hidden' : 'visible' }}
+            >
+              ← Back
+            </button>
+            
+            <span className="text-xs text-wise-muted">
+              {stepIndex < STEPS.length - 1 ? 'Your answers are auto-saved.' : 'Click below to run safety & routing review.'}
+            </span>
+            
+            <button
+              type="button"
+              onClick={handleNext}
+              disabled={stepIndex === 0 && watchedConcerns.length === 0}
+              className="btn btn-primary btn-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {stepIndex === STEPS.length - 1 ? 'Submit & Review' : 'Next'}
+              <span className="inner flex items-center gap-1">→</span>
+            </button>
+          </div>
+        </PremiumCard>
+
+        {/* Notices using custom Notice component */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="notice flex items-start gap-3 bg-wise-surface-2 border border-wise-hairline rounded-xl p-4 text-[13px]">
-            <Info className="w-5 h-5 text-wise-muted shrink-0 mt-0.5" />
-            <div>
-              <strong className="text-wise-fg font-semibold">Responsible AI.</strong> Wise Care uses intake parameters strictly to recommend care pathways. We never monetize or distribute sensitive health information.
-            </div>
-          </div>
-          <div className="notice warn flex items-start gap-3 bg-wise-warn-soft border border-wise-warn/20 rounded-xl p-4 text-[13px]">
-            <AlertTriangle className="w-5 h-5 text-wise-warn shrink-0 mt-0.5" />
-            <div>
-              <strong>Immediate need?</strong> You do not need to finish this intake. Call/text the <strong>988 Suicide & Crisis Lifeline</strong> anytime for direct professional help.
-            </div>
-          </div>
+          <Notice title="Responsible AI">
+            Wise Care uses intake parameters strictly to recommend care pathways. For this prototype, your information is stored locally in this browser session. Nothing is shared unless you explicitly choose to send a simulated connection request.
+          </Notice>
+          <Notice variant="warn" title="Immediate need?">
+            You do not need to finish this intake. Call or text the <strong>988 Suicide & Crisis Lifeline</strong> anytime for direct, free, and confidential professional help.
+          </Notice>
         </div>
 
       </div>

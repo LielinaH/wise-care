@@ -5,18 +5,16 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/layout/AppShell';
 import FallbackBanner from '@/components/wise-care/FallbackBanner';
+import PremiumCard from '@/components/ui/PremiumCard';
+import Badge from '@/components/ui/Badge';
+import Notice from '@/components/ui/Notice';
 import { storage } from '@/lib/storage';
 import { CareRouteResult, IntakeAnswers } from '@/lib/types';
 import { 
-  GitBranch, 
-  ShieldAlert, 
-  HelpCircle, 
   ArrowRight, 
   CheckCircle2, 
-  ShieldAlert as AlertIcon, 
   Compass, 
-  FileText,
-  AlertTriangle
+  FileText
 } from 'lucide-react';
 
 export default function CareRoutePage() {
@@ -39,7 +37,7 @@ export default function CareRoutePage() {
 
   const isCrisis = careRoute.riskLevel === 'crisis';
 
-  const riskBadgeClass = (risk: string) => {
+  const riskBadgeVariant = (risk: string) => {
     if (risk === 'crisis') return 'danger';
     if (risk === 'high') return 'warn';
     if (risk === 'moderate') return 'blue';
@@ -62,102 +60,91 @@ export default function CareRoutePage() {
 
       <div className="enter-stagger space-y-6">
         
-        {/* Urgent Crisis Header */}
+        {/* Urgent Crisis Header using custom Notice component */}
         {isCrisis && (
-          <div className="p-6 bg-wise-danger-soft border border-wise-danger/25 rounded-3xl flex gap-5 items-start">
-            <div className="w-12 h-12 rounded-xl bg-wise-danger text-white flex items-center justify-center shrink-0 shadow-sm">
-              <AlertTriangle className="w-6 h-6 text-white animate-pulse" />
+          <Notice variant="danger" title="Immediate Crisis Support Recommended" className="p-6">
+            <p className="text-sm leading-relaxed opacity-95 max-w-[64ch] mb-4">
+              Based on intake signals, we recommend connecting with immediate crisis assistance. Wise Care is an administrative access platform, not an emergency medical responder or clinician. 
+              <strong> Please contact a hotline below.</strong>
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <a className="btn btn-lg bg-wise-danger text-white text-sm font-semibold hover:opacity-90 shadow-md" href="tel:988">Call or text 988 (Lifeline)</a>
+              <a className="btn btn-lg border border-wise-danger text-wise-danger text-sm font-semibold hover:bg-wise-danger/10 bg-wise-surface" href="https://988lifeline.org/chat/" target="_blank" rel="noreferrer">Chat online now</a>
+              <a className="btn btn-lg btn-ghost text-sm font-semibold border-wise-danger/30 text-wise-danger bg-wise-surface" href="tel:911">Call 911 (Emergency)</a>
             </div>
-            <div className="flex-1 space-y-3">
-              <h2 className="text-xl font-display font-semibold text-wise-danger">Immediate Crisis Support Recommended</h2>
-              <p className="text-sm text-wise-danger leading-relaxed opacity-90 max-w-[64ch]">
-                Based on intake signals, we recommend connecting with immediate crisis assistance. Wise Care is an administrative access platform, not an emergency medical responder or clinician. 
-                <strong> Please contact a hotline below.</strong>
-              </p>
-              <div className="flex flex-wrap gap-3">
-                <a className="btn btn-lg bg-wise-danger text-white text-sm font-semibold hover:opacity-90 shadow-md" href="tel:988">Call or text 988 (Lifeline)</a>
-                <a className="btn btn-lg border border-wise-danger text-wise-danger text-sm font-semibold hover:bg-wise-danger/10 bg-wise-surface" href="https://988lifeline.org/chat/" target="_blank" rel="noreferrer">Chat online now</a>
-                <a className="btn btn-lg btn-ghost text-sm font-semibold border-wise-danger/30 text-wise-danger bg-wise-surface" href="tel:911">Call 911 (Emergency)</a>
-              </div>
-            </div>
-          </div>
+          </Notice>
         )}
 
-        {/* Pathway Header Card */}
-        <div className="card bg-wise-surface border border-wise-hairline rounded-2xl p-6 shadow-sm">
-          <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-4">
-            <div>
-              <span className="kicker">Algorithmic Recommendation</span>
-              <h2 className="text-2xl font-display font-semibold tracking-tight my-1.5">{careRoute.recommendedRoute}</h2>
-              <p className="text-xs text-wise-muted-2 font-mono">Risk Level: 
-                <span className={`badge ${riskBadgeClass(careRoute.riskLevel)} ml-2`}>
-                  <span className="dot"></span>{careRoute.riskLevel} Risk
-                </span>
-              </p>
+        {/* Pathway Header Card using PremiumCard */}
+        <PremiumCard 
+          variant="standard"
+          kicker="Algorithmic Recommendation"
+          title={careRoute.recommendedRoute}
+          sub={
+            <div className="flex items-center gap-2 mt-1.5">
+              <span className="text-xs text-wise-muted-2 font-mono uppercase tracking-wide">Risk Level:</span>
+              <Badge variant={riskBadgeVariant(careRoute.riskLevel)}>
+                {careRoute.riskLevel} Risk
+              </Badge>
             </div>
-            {!isCrisis && (
+          }
+          action={
+            !isCrisis && (
               <div className="flex gap-2">
-                <Link href="/matching" className="btn btn-soft btn-sm flex items-center">
+                <Link href="/matching" className="btn btn-soft btn-sm flex items-center gap-1.5">
                   <Compass className="w-4 h-4 shrink-0" /> Support options
                 </Link>
-                <Link href="/care-packet" className="btn btn-primary btn-sm flex items-center">
+                <Link href="/care-packet" className="btn btn-primary btn-sm flex items-center gap-1.5">
                   <FileText className="w-4 h-4 shrink-0" /> Prepare packet
                 </Link>
               </div>
-            )}
-          </div>
-          
-          <div className="p-4.5 bg-wise-surface-2 border border-wise-hairline rounded-xl mt-4">
-            <h3 className="text-sm font-semibold text-wise-fg-soft mb-1.5">Route Reasoning Summary</h3>
+            )
+          }
+        >
+          <div className="p-4.5 bg-wise-surface-sunk border border-wise-hairline rounded-xl mt-4">
+            <h4 className="text-sm font-semibold text-wise-fg-soft mb-1.5">Route Reasoning Summary</h4>
             <p className="text-[13.5px] text-wise-fg-soft leading-relaxed">
               {careRoute.reasoningSummary}
             </p>
           </div>
-        </div>
+        </PremiumCard>
 
         {/* Details Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {/* Recommended Support Types */}
-          <div className="card bg-wise-surface border border-wise-hairline rounded-2xl p-5 shadow-sm">
-            <h3 className="text-base font-semibold mb-3.5">Recommended Care Modalities</h3>
-            <ul className="space-y-3">
+          <PremiumCard variant="standard" title="Recommended Care Modalities">
+            <ul className="b-list mt-3">
               {careRoute.recommendedSupportTypes.map((type, idx) => (
-                <li key={idx} className="flex gap-3 items-start text-sm text-wise-fg-soft leading-relaxed">
-                  <span className="w-5 h-5 rounded-full bg-wise-teal-soft text-wise-teal-deep flex items-center justify-center font-mono text-[10px] font-bold shrink-0 mt-0.5">
-                    {idx + 1}
-                  </span>
-                  <span>{type}</span>
+                <li key={idx}>
+                  <span className="num-dot">{idx + 1}</span>
+                  <span className="text-sm text-wise-fg-soft leading-relaxed mt-0.5">{type}</span>
                 </li>
               ))}
             </ul>
-          </div>
+          </PremiumCard>
 
           {/* Barriers Identified */}
-          <div className="card bg-wise-surface border border-wise-hairline rounded-2xl p-5 shadow-sm">
-            <h3 className="text-base font-semibold mb-3.5">Addressed Access Barriers</h3>
+          <PremiumCard variant="standard" title="Addressed Access Barriers">
             {careRoute.detectedBarriers.length > 0 ? (
-              <ul className="space-y-3">
+              <ul className="b-list mt-3">
                 {careRoute.detectedBarriers.map((barrier, idx) => (
-                  <li key={idx} className="flex gap-3 items-start text-sm text-wise-fg-soft leading-relaxed">
-                    <span className="w-5 h-5 rounded-full bg-wise-warn-soft text-wise-warn flex items-center justify-center font-mono text-[10px] font-bold shrink-0 mt-0.5">
-                      !
-                    </span>
-                    <span>{barrier}</span>
+                  <li key={idx}>
+                    <span className="num-dot bg-wise-warn-soft text-wise-warn">!</span>
+                    <span className="text-sm text-wise-fg-soft leading-relaxed mt-0.5">{barrier}</span>
                   </li>
                 ))}
               </ul>
             ) : (
-              <div className="text-xs text-wise-muted italic py-4">No access barriers reported during intake.</div>
+              <div className="text-xs text-wise-muted italic py-6">No access barriers reported during intake.</div>
             )}
-          </div>
+          </PremiumCard>
         </div>
 
         {/* Goals & Next Steps */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {/* Goals */}
-          <div className="card bg-wise-surface border border-wise-hairline rounded-2xl p-5 shadow-sm">
-            <h3 className="text-base font-semibold mb-3.5">Immediate Care Goals</h3>
-            <ul className="space-y-3">
+          <PremiumCard variant="standard" title="Immediate Care Goals">
+            <ul className="space-y-3 mt-3">
               {careRoute.careGoals.map((goal, idx) => (
                 <li key={idx} className="flex gap-3 items-start text-sm text-wise-fg-soft leading-relaxed">
                   <CheckCircle2 className="w-4 h-4 text-wise-teal shrink-0 mt-0.5" />
@@ -165,12 +152,11 @@ export default function CareRoutePage() {
                 </li>
               ))}
             </ul>
-          </div>
+          </PremiumCard>
 
           {/* Next Steps */}
-          <div className="card bg-wise-surface border border-wise-hairline rounded-2xl p-5 shadow-sm">
-            <h3 className="text-base font-semibold mb-3.5">Suggested Next Steps</h3>
-            <ul className="space-y-3">
+          <PremiumCard variant="standard" title="Suggested Next Steps">
+            <ul className="space-y-3 mt-3">
               {careRoute.nextSteps.map((step, idx) => (
                 <li key={idx} className="flex gap-3 items-start text-sm text-wise-fg-soft leading-relaxed font-medium">
                   <ArrowRight className="w-4 h-4 text-wise-teal-deep shrink-0 mt-0.5" />
@@ -178,16 +164,18 @@ export default function CareRoutePage() {
                 </li>
               ))}
             </ul>
-          </div>
+          </PremiumCard>
         </div>
 
-        {/* Safety Disclaimer */}
-        <div className="notice warn flex items-start gap-3.5 bg-wise-warn-soft border border-wise-warn/20 rounded-xl p-4 text-[13.5px]">
-          <HelpCircle className="ico w-5 h-5 shrink-0 text-wise-warn mt-0.5" />
-          <div className="text-wise-fg-soft leading-normal">
-            <strong>Clinical Disclaimer:</strong> {careRoute.safetyMessage}
-          </div>
-        </div>
+        {/* Safety Disclaimer using custom Notice component */}
+        <Notice variant="warn" title="Clinical Disclaimer">
+          <p className="text-[13.5px] leading-relaxed">
+            {careRoute.safetyMessage}
+          </p>
+          <p className="text-[12px] text-wise-muted-2 mt-2">
+            For this prototype, your information is stored locally in this browser session. Nothing is shared unless you explicitly choose to send a simulated connection request.
+          </p>
+        </Notice>
 
       </div>
     </AppShell>

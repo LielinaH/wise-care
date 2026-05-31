@@ -27,7 +27,7 @@ export default function DemoRoleSwitcher() {
   };
 
   return (
-    <div className="mt-auto pt-3 border-t border-wise-hairline flex flex-col gap-2">
+    <div className="flex flex-col gap-2">
       <div className="text-[10px] font-mono font-medium tracking-[0.16em] uppercase text-wise-muted-2 px-1">
         Demo Role
       </div>

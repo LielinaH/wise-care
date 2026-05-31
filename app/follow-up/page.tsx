@@ -4,9 +4,11 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import AppShell from '@/components/layout/AppShell';
 import FallbackBanner from '@/components/wise-care/FallbackBanner';
+import PremiumCard from '@/components/ui/PremiumCard';
+import Notice from '@/components/ui/Notice';
 import { storage } from '@/lib/storage';
 import { FollowUpResult, CareRouteResult } from '@/lib/types';
-import { Check, Loader2, ClipboardList, Info, HelpCircle, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Check, Loader2, ArrowRight } from 'lucide-react';
 
 const BLOCKER_OPTIONS = [
   { v: 'cost', l: 'Cost or insurance confusion', s: 'Rates are too high or insurance status is unclear' },
@@ -78,13 +80,11 @@ export default function FollowUpPage() {
         
         {/* Intro */}
         {!result && (
-          <div className="card bg-wise-surface border border-wise-hairline rounded-2xl p-5 shadow-sm">
-            <span className="kicker">Check-in Survey</span>
-            <h2 className="text-lg font-semibold tracking-tight mt-1">Care Navigation Check-in</h2>
-            <p className="text-xs text-wise-muted mt-1 leading-relaxed">
+          <PremiumCard variant="standard" kicker="Check-in Survey" title="Care Navigation Check-in">
+            <p className="text-xs text-wise-muted leading-relaxed">
               Let us know how your care connection process is going. If you hit any roadblocks, AI agents will suggest adjustments to keep you moving forward.
             </p>
-          </div>
+          </PremiumCard>
         )}
 
         {loading ? (
@@ -95,18 +95,17 @@ export default function FollowUpPage() {
         ) : result ? (
           // Output recommendations
           <div className="space-y-6 enter">
-            <div className="card bg-wise-surface border border-wise-hairline rounded-2xl p-5 shadow-sm space-y-4">
-              <div>
-                <span className="kicker">Adjusted Recommendation</span>
-                <h2 className="text-lg font-semibold tracking-tight mt-1">{result.blockerSummary}</h2>
-              </div>
-              
-              <div className="p-4 bg-wise-surface-2 border border-wise-hairline rounded-xl text-xs text-wise-fg-soft leading-relaxed">
+            <PremiumCard 
+              variant="standard" 
+              kicker="Adjusted Recommendation"
+              title={result.blockerSummary}
+            >
+              <div className="p-4 bg-wise-surface-sunk border border-wise-hairline rounded-xl text-xs text-wise-fg-soft leading-relaxed mt-4">
                 <span className="font-semibold text-wise-teal-deep text-[10px] uppercase tracking-wider block mb-1">Recommended Adjustment:</span>
                 <p>{result.recommendedAdjustment}</p>
               </div>
 
-              <div className="space-y-1.5 pt-2 border-t border-wise-hairline">
+              <div className="space-y-1.5 pt-3 border-t border-wise-hairline mt-4">
                 <span className="text-xs text-wise-muted block mb-1">Next Best Action Steps:</span>
                 <ul className="space-y-2">
                   {result.nextBestActions.map((action, idx) => (
@@ -118,10 +117,10 @@ export default function FollowUpPage() {
                 </ul>
               </div>
 
-              <div className="p-4.5 bg-wise-teal-soft/10 border border-wise-teal/20 rounded-xl text-xs text-wise-teal-deep italic leading-relaxed">
+              <div className="p-4.5 bg-wise-teal-soft/10 border border-wise-teal/20 rounded-xl text-xs text-wise-teal-deep italic leading-relaxed mt-4">
                 "{result.encouragement}"
               </div>
-            </div>
+            </PremiumCard>
 
             <div className="flex gap-3 justify-center">
               <button onClick={handleReset} className="btn btn-ghost btn-sm text-xs font-semibold">
@@ -137,14 +136,13 @@ export default function FollowUpPage() {
           <form onSubmit={handleSubmit} className="space-y-6 enter">
             
             {/* Contacted */}
-            <div className="card bg-wise-surface border border-wise-hairline rounded-2xl p-5 shadow-sm space-y-3">
-              <h3 className="text-sm font-semibold">1. Did you contact any matched provider?</h3>
-              <div className="grid grid-cols-2 gap-3">
+            <PremiumCard variant="standard" title="1. Did you contact any matched provider?">
+              <div className="grid grid-cols-2 gap-3 mt-3">
                 <button
                   type="button"
                   onClick={() => { setContacted(true); setScheduled(null); }}
-                  className={`choice flex items-center justify-center p-3 border rounded-xl text-xs font-medium transition-all ${
-                    contacted === true ? 'selected border-wise-teal bg-wise-teal-soft' : 'border-wise-border hover:border-wise-border-2 bg-wise-surface'
+                  className={`choice flex items-center justify-center p-3 text-xs ${
+                    contacted === true ? 'selected' : ''
                   }`}
                 >
                   Yes, I reached out
@@ -152,25 +150,24 @@ export default function FollowUpPage() {
                 <button
                   type="button"
                   onClick={() => { setContacted(false); setScheduled(null); }}
-                  className={`choice flex items-center justify-center p-3 border rounded-xl text-xs font-medium transition-all ${
-                    contacted === false ? 'selected border-wise-teal bg-wise-teal-soft' : 'border-wise-border hover:border-wise-border-2 bg-wise-surface'
+                  className={`choice flex items-center justify-center p-3 text-xs ${
+                    contacted === false ? 'selected' : ''
                   }`}
                 >
                   No, not yet
                 </button>
               </div>
-            </div>
+            </PremiumCard>
 
             {/* Scheduled */}
             {contacted === true && (
-              <div className="card bg-wise-surface border border-wise-hairline rounded-2xl p-5 shadow-sm space-y-3 enter">
-                <h3 className="text-sm font-semibold">2. Did you schedule an appointment?</h3>
-                <div className="grid grid-cols-2 gap-3">
+              <PremiumCard variant="standard" title="2. Did you schedule an appointment?" className="enter">
+                <div className="grid grid-cols-2 gap-3 mt-3">
                   <button
                     type="button"
                     onClick={() => setScheduled(true)}
-                    className={`choice flex items-center justify-center p-3 border rounded-xl text-xs font-medium transition-all ${
-                      scheduled === true ? 'selected border-wise-teal bg-wise-teal-soft' : 'border-wise-border hover:border-wise-border-2 bg-wise-surface'
+                    className={`choice flex items-center justify-center p-3 text-xs ${
+                      scheduled === true ? 'selected' : ''
                     }`}
                   >
                     Yes, scheduled
@@ -178,24 +175,23 @@ export default function FollowUpPage() {
                   <button
                     type="button"
                     onClick={() => setScheduled(false)}
-                    className={`choice flex items-center justify-center p-3 border rounded-xl text-xs font-medium transition-all ${
-                      scheduled === false ? 'selected border-wise-teal bg-wise-teal-soft' : 'border-wise-border hover:border-wise-border-2 bg-wise-surface'
+                    className={`choice flex items-center justify-center p-3 text-xs ${
+                      scheduled === false ? 'selected' : ''
                     }`}
                   >
                     No, not scheduled
                   </button>
                 </div>
-              </div>
+              </PremiumCard>
             )}
 
             {/* Blocker question */}
             {((contacted === false) || (scheduled === false)) && (
-              <div className="card bg-wise-surface border border-wise-hairline rounded-2xl p-5 shadow-sm space-y-3 enter">
-                <h3 className="text-sm font-semibold">What was the primary roadblock?</h3>
-                <p className="text-xs text-wise-muted leading-relaxed">
+              <PremiumCard variant="standard" title="What was the primary roadblock?" className="enter">
+                <p className="text-xs text-wise-muted leading-relaxed mb-3">
                   We use your selection to adapt your recommendations dynamically.
                 </p>
-                <div className="choice-grid grid grid-cols-1 gap-2.5">
+                <div className="choice-grid grid-cols-1">
                   {BLOCKER_OPTIONS.map((o) => {
                     const isSelected = blocker === o.v;
                     return (
@@ -203,24 +199,20 @@ export default function FollowUpPage() {
                         key={o.v}
                         type="button"
                         onClick={() => setBlocker(o.v)}
-                        className={`choice flex items-start gap-3 p-4 border rounded-xl transition-all ${
-                          isSelected ? 'selected border-wise-teal bg-wise-teal-soft shadow-inner' : 'border-wise-border hover:border-wise-border-2 bg-wise-surface'
-                        }`}
+                        className={`choice items-start ${isSelected ? 'selected' : ''}`}
                       >
-                        <span className={`check w-[18px] h-[18px] rounded border flex items-center justify-center shrink-0 ${
-                          isSelected ? 'border-wise-teal-deep bg-wise-teal-deep text-white' : 'border-wise-border-2 bg-wise-surface'
-                        }`}>
-                          {isSelected && <Check className="w-3.5 h-3.5 text-white" />}
+                        <span className="check">
+                          {isSelected && <Check className="w-3.5 h-3.5" />}
                         </span>
                         <div>
-                          <div className="label text-sm font-semibold text-wise-fg">{o.l}</div>
-                          <div className="sub text-xs text-wise-muted mt-1 leading-normal">{o.s}</div>
+                          <div className="label">{o.l}</div>
+                          <div className="sub">{o.s}</div>
                         </div>
                       </button>
                     );
                   })}
                 </div>
-              </div>
+              </PremiumCard>
             )}
 
             {/* Form submit */}
@@ -236,13 +228,9 @@ export default function FollowUpPage() {
           </form>
         )}
 
-        {/* Safety Disclaimer */}
-        <div className="notice flex items-start gap-3 bg-wise-surface-2 border border-wise-hairline rounded-xl p-4 text-[13px]">
-          <ShieldCheck className="w-5 h-5 text-wise-muted shrink-0 mt-0.5" />
-          <div className="text-wise-fg-soft leading-normal">
-            <strong>Security Reminder:</strong> Your follow-up responses are stored locally. They help refine care navigation and do not constitute electronic health records.
-          </div>
-        </div>
+        <Notice variant="standard" title="Security & Privacy">
+          For this prototype, your information is stored locally in this browser session. Nothing is shared unless you explicitly choose to send a simulated connection request. These check-in responses do not constitute electronic health records.
+        </Notice>
 
       </div>
     </AppShell>

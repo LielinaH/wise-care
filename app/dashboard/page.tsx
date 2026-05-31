@@ -4,21 +4,17 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import AppShell from '@/components/layout/AppShell';
 import FallbackBanner from '@/components/wise-care/FallbackBanner';
+import PremiumCard from '@/components/ui/PremiumCard';
+import Badge from '@/components/ui/Badge';
+import Notice from '@/components/ui/Notice';
 import { storage } from '@/lib/storage';
-import { IntakeAnswers, CareRouteResult, Provider, Referral } from '@/lib/types';
+import { IntakeAnswers, CareRouteResult, Provider } from '@/lib/types';
 import { MOCK_PROVIDERS } from '@/lib/data/mockProviders';
 import { matchProviders } from '@/lib/matching/matchProviders';
 import { 
-  ClipboardList, 
-  GitBranch, 
   Compass, 
   Check, 
-  ShieldCheck, 
-  Info, 
-  Bell, 
-  LogOut,
-  Calendar,
-  AlertTriangle
+  Bell
 } from 'lucide-react';
 
 export default function UserDashboard() {
@@ -72,9 +68,9 @@ export default function UserDashboard() {
 
       <div className="enter-stagger space-y-6">
         
-        {/* Welcome Card */}
-        <div className="welcome-card welcome-card bezel border border-wise-hairline rounded-3xl bg-gradient-to-b from-wise-surface-2 to-wise-surface shadow-sm overflow-hidden">
-          <div className="inner p-6 md:p-8 grid grid-cols-1 md:grid-cols-[1.4fr_1fr] gap-6 items-center">
+        {/* Welcome Card using PremiumCard bezel variant */}
+        <PremiumCard variant="bezel" className="overflow-hidden">
+          <div className="grid grid-cols-1 md:grid-cols-[1.4fr_1fr] gap-6 items-center">
             <div>
               <span className="kicker">Welcome back</span>
               {hasCompletedIntake ? (
@@ -114,41 +110,40 @@ export default function UserDashboard() {
             </div>
             
             <div className="flex flex-col gap-2.5">
-              <div className="p-4 bg-wise-surface-2 border border-wise-hairline rounded-xl shadow-inner">
+              <div className="p-4 bg-wise-surface-sunk border border-wise-hairline rounded-xl shadow-inner">
                 <div className="flex justify-between items-center mb-2">
                   <span className="kicker text-[10px] text-wise-muted">Care journey</span>
-                  <span className={`badge ${hasCompletedIntake ? 'teal' : 'warn'}`}>
-                    <span className="dot"></span>
+                  <Badge variant={hasCompletedIntake ? 'teal' : 'warn'}>
                     {hasCompletedIntake ? 'Route ready' : 'Not started'}
-                  </span>
+                  </Badge>
                 </div>
                 <div className="step-rail flex gap-1 mb-2">
-                  <span className={`step flex-1 h-1 rounded ${hasCompletedIntake ? 'bg-wise-teal-deep' : 'bg-wise-surface-sunk'}`}></span>
-                  <span className={`step flex-1 h-1 rounded ${hasCompletedIntake ? 'bg-wise-teal-deep' : 'bg-wise-surface-sunk'}`}></span>
-                  <span className={`step flex-1 h-1 rounded ${hasCompletedIntake ? 'bg-wise-teal-deep' : 'bg-wise-surface-sunk'}`}></span>
-                  <span className={`step flex-1 h-1 rounded ${hasCompletedIntake ? 'bg-wise-teal' : 'bg-wise-surface-sunk'}`}></span>
-                  <span className="step flex-1 h-1 rounded bg-wise-surface-sunk"></span>
-                  <span className="step flex-1 h-1 rounded bg-wise-surface-sunk"></span>
+                  <span className={`step flex-1 h-1 rounded ${hasCompletedIntake ? 'done active' : ''}`} />
+                  <span className={`step flex-1 h-1 rounded ${hasCompletedIntake ? 'done active' : ''}`} />
+                  <span className={`step flex-1 h-1 rounded ${hasCompletedIntake ? 'done active' : ''}`} />
+                  <span className={`step flex-1 h-1 rounded ${hasCompletedIntake ? 'active' : ''}`} />
+                  <span className="step flex-1 h-1 rounded bg-wise-surface-sunk" />
+                  <span className="step flex-1 h-1 rounded bg-wise-surface-sunk" />
                 </div>
                 <div className="text-[12.5px] text-wise-muted-2">
                   {hasCompletedIntake ? 'Step 4 of 6 · Review options' : 'Step 0 of 6 · Awaiting intake'}
                 </div>
               </div>
               <div className="p-4 bg-wise-teal-soft border border-wise-teal/20 rounded-xl text-xs text-wise-teal-deep flex gap-2">
-                <ShieldCheck className="w-4 h-4 shrink-0 text-wise-teal-deep mt-0.5" />
+                <span className="num-dot bg-wise-teal-soft text-wise-teal-deep shrink-0 mt-0.5 font-semibold">✓</span>
                 <span>
                   {hasCompletedIntake && intake.safety !== 'immediate' ? (
                     <><strong>Safety check passed.</strong> No immediate risk indicators. If anything changes, crisis support is always here.</>
                   ) : intake.safety === 'immediate' ? (
                     <><strong className="text-wise-danger">Crisis flag triggered.</strong> Crisis/hotline support routing is priority.</>
                   ) : (
-                    <><strong>Private & secure.</strong> Your answers are encrypted in this browser session. Nothing is shared without your consent.</>
+                    <><strong>Private & local.</strong> For this prototype, your information is stored locally in this browser session. Nothing is shared unless you explicitly choose to send a simulated connection request.</>
                   )}
                 </span>
               </div>
             </div>
           </div>
-        </div>
+        </PremiumCard>
 
         {/* Status Strip */}
         <div className="status-strip grid grid-cols-2 md:grid-cols-4 bg-wise-surface border border-wise-hairline rounded-xl overflow-hidden shadow-sm">
@@ -190,66 +185,67 @@ export default function UserDashboard() {
           </div>
         </div>
 
-        {/* Next recommended action */}
-        <div className="next-card flex gap-4 items-start p-5 bg-wise-surface border border-wise-hairline rounded-2xl shadow-sm">
-          <div className="ico w-11 h-11 rounded-xl bg-gradient-to-b from-wise-teal to-wise-teal-deep text-white flex items-center justify-center shrink-0 shadow-sm">
-            <Compass className="w-5 h-5" />
+        {/* Next recommended action using PremiumCard */}
+        <PremiumCard variant="standard">
+          <div className="flex gap-4 items-start">
+            <div className="ico w-11 h-11 rounded-xl bg-gradient-to-b from-wise-teal to-wise-teal-deep text-white flex items-center justify-center shrink-0 shadow-sm">
+              <Compass className="w-5 h-5" />
+            </div>
+            <div className="body flex-1">
+              <span className="kicker">Next recommended action</span>
+              {hasCompletedIntake ? (
+                <>
+                  <h3 className="text-base font-semibold tracking-tight text-wise-fg mt-0.5">
+                    Review your matched support options.
+                  </h3>
+                  <p className="text-wise-muted text-[13.5px] mt-1 mb-3.5 leading-relaxed">
+                    We've filtered {MOCK_PROVIDERS.length} support routes fitting your insurance plan, state location, and concerns. Save options that look right to customize your shareable packet.
+                  </p>
+                  <div className="flex gap-2">
+                    <Link href="/matching" className="btn btn-soft btn-sm text-xs font-semibold">
+                      Review options →
+                    </Link>
+                    <Link href="/intake" className="btn btn-quiet btn-sm text-xs text-wise-fg-soft font-semibold">
+                      Update intake
+                    </Link>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h3 className="text-base font-semibold tracking-tight text-wise-fg mt-0.5">
+                    Complete private intake check-in.
+                  </h3>
+                  <p className="text-wise-muted text-[13.5px] mt-1 mb-3.5 leading-relaxed">
+                    Provide brief descriptors regarding your timeline, life impacts, and safety check to generate matched providers and self-guided supports.
+                  </p>
+                  <div className="flex gap-2">
+                    <Link href="/intake" className="btn btn-soft btn-sm text-xs font-semibold">
+                      Begin intake check-in →
+                    </Link>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
-          <div className="body flex-1">
-            <span className="kicker">Next recommended action</span>
-            {hasCompletedIntake ? (
-              <>
-                <h3 className="text-base font-semibold tracking-tight text-wise-fg mt-0.5">
-                  Review your matched support options.
-                </h3>
-                <p className="text-wise-muted text-[13.5px] mt-1 mb-3.5 leading-relaxed">
-                  We've filtered {MOCK_PROVIDERS.length} support routes fitting your insurance plan, state location, and concerns. Save options that look right to customize your shareable packet.
-                </p>
-                <div className="flex gap-2">
-                  <Link href="/matching" className="btn btn-soft btn-sm text-xs font-semibold">
-                    Review options →
-                  </Link>
-                  <Link href="/intake" className="btn btn-quiet btn-sm text-xs text-wise-fg-soft font-semibold">
-                    Update intake
-                  </Link>
-                </div>
-              </>
-            ) : (
-              <>
-                <h3 className="text-base font-semibold tracking-tight text-wise-fg mt-0.5">
-                  Complete private intake check-in.
-                </h3>
-                <p className="text-wise-muted text-[13.5px] mt-1 mb-3.5 leading-relaxed">
-                  Provide brief descriptors regarding your timeline, life impacts, and safety check to generate matched providers and self-guided supports.
-                </p>
-                <div className="flex gap-2">
-                  <Link href="/intake" className="btn btn-soft btn-sm text-xs font-semibold">
-                    Begin intake check-in →
-                  </Link>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
+        </PremiumCard>
 
         {/* Grid content */}
         <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-5">
           {/* Left Card: Matched Options */}
-          <div className="card bg-wise-surface border border-wise-hairline rounded-2xl p-5 shadow-sm">
-            <div className="card-head flex items-start justify-between gap-4 mb-4">
-              <div>
-                <h3 className="text-base font-semibold">Matched support options</h3>
-                <div className="sub text-xs text-wise-muted">Top 3 matches based on compatibility.</div>
-              </div>
-              {hasCompletedIntake && (
+          <PremiumCard 
+            variant="standard" 
+            title="Matched support options"
+            sub="Top 3 matches based on compatibility."
+            action={
+              hasCompletedIntake && (
                 <Link href="/matching" className="btn btn-quiet btn-sm text-xs font-semibold">
                   See all {MOCK_PROVIDERS.length} →
                 </Link>
-              )}
-            </div>
-            
+              )
+            }
+          >
             {hasCompletedIntake ? (
-              <div className="divide-y divide-wise-hairline">
+              <div className="divide-y divide-wise-hairline mt-3">
                 {matched.map((provider) => (
                   <div key={provider.id} className="provider-row flex items-center gap-3.5 py-3">
                     <div className="provider-avatar w-9 h-9 rounded-xl bg-gradient-to-br from-wise-teal-soft to-wise-blue-soft text-wise-teal-deep flex items-center justify-center font-display font-semibold text-xs shrink-0">
@@ -261,27 +257,24 @@ export default function UserDashboard() {
                         {provider.type} · {provider.modality.join(', ')} · {provider.licensure}
                       </div>
                     </div>
-                    <span className="badge teal">{provider.matchScore}% match</span>
+                    <Badge variant="teal" showDot={false}>{provider.matchScore}% match</Badge>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="py-8 text-center text-wise-muted text-xs bg-wise-surface-2 border border-dashed border-wise-border rounded-xl">
+              <div className="py-8 text-center text-wise-muted text-xs bg-wise-surface-sunk border border-dashed border-wise-border rounded-xl mt-3">
                 Please complete the intake form to trigger algorithmic provider matches.
               </div>
             )}
-          </div>
+          </PremiumCard>
 
           {/* Right Card: Checklist */}
-          <div className="card bg-wise-surface border border-wise-hairline rounded-2xl p-5 shadow-sm">
-            <div className="card-head flex justify-between items-center mb-4">
-              <div>
-                <h3 className="text-base font-semibold">Follow-up checklist</h3>
-                <div className="sub text-xs text-wise-muted">Your navigation tracker.</div>
-              </div>
-            </div>
-            
-            <ul className="check-list flex flex-col gap-2">
+          <PremiumCard 
+            variant="standard" 
+            title="Follow-up checklist"
+            sub="Your navigation tracker."
+          >
+            <ul className="check-list flex flex-col gap-2 mt-3">
               <li className={`flex items-center gap-3 p-3 border border-wise-hairline rounded-xl text-xs text-wise-fg-soft ${hasCompletedIntake ? 'done bg-wise-surface-2 text-wise-muted opacity-80' : ''}`}>
                 <div className="box w-4.5 h-4.5 rounded border border-wise-border-2 flex items-center justify-center cursor-pointer">
                   {hasCompletedIntake && <Check className="w-3.5 h-3.5 text-wise-teal-deep font-bold" />}
@@ -315,17 +308,16 @@ export default function UserDashboard() {
                 <span className={`label ${sentRequests.length > 0 ? 'line-through' : ''}`}>Send connection request</span>
               </li>
             </ul>
-          </div>
+          </PremiumCard>
         </div>
 
         {/* Care Packet Preview */}
         {hasCompletedIntake ? (
-          <div className="card bg-wise-surface border border-wise-hairline rounded-2xl p-5 shadow-sm">
-            <div className="card-head flex items-start justify-between gap-4 mb-4">
-              <div>
-                <h3 className="text-base font-semibold">Care Packet preview</h3>
-                <div className="sub text-xs text-wise-muted">Structured clinician briefing sheet. Only shared with your consent.</div>
-              </div>
+          <PremiumCard 
+            variant="standard" 
+            title="Care Packet preview"
+            sub="Structured clinician briefing sheet. Only shared with your consent."
+            action={
               <div className="flex gap-2">
                 <Link href="/care-packet" className="btn btn-ghost btn-sm text-xs font-semibold">
                   Open packet
@@ -334,8 +326,9 @@ export default function UserDashboard() {
                   Share with a provider →
                 </Link>
               </div>
-            </div>
-            <div className="packet-preview p-4.5 bg-gradient-to-b from-wise-surface-2 to-wise-surface border border-wise-hairline rounded-xl text-xs flex flex-col gap-2.5">
+            }
+          >
+            <div className="packet-preview p-4.5 bg-gradient-to-b from-wise-surface-sunk to-wise-surface border border-wise-hairline rounded-xl text-xs flex flex-col gap-2.5 mt-3">
               <div className="line flex gap-2.5 items-start text-wise-fg-soft">
                 <span className="label font-mono text-[10.5px] uppercase tracking-wider text-wise-muted shrink-0 w-[110px]">Main concerns</span>
                 <span>{intake.concerns?.map(c => c.charAt(0).toUpperCase() + c.slice(1)).join(', ')}</span>
@@ -363,16 +356,18 @@ export default function UserDashboard() {
                 </Link>
               </div>
             </div>
-          </div>
+          </PremiumCard>
         ) : null}
 
-        {/* Disclaimer Notice */}
-        <div className="notice flex items-start gap-3.5 bg-wise-surface-2 border border-wise-hairline rounded-xl p-4 text-[13.5px]">
-          <Info className="ico w-5 h-5 shrink-0 text-wise-muted mt-0.5" />
-          <div className="text-wise-fg-soft">
-            <strong className="text-wise-fg font-semibold">A reminder.</strong> Wise Care helps with navigation and preparation. It does not diagnose, treat, prescribe medication, or replace a licensed clinical professional. If you are in immediate danger, call <strong>988</strong> or <strong>911</strong>.
-          </div>
-        </div>
+        {/* Disclaimer Notice using custom Notice component */}
+        <Notice variant="standard" title="Clinical Disclaimer">
+          <p className="text-[13.5px] leading-relaxed">
+            Wise Care helps with navigation and preparation. It does not diagnose, treat, prescribe medication, or replace a licensed clinical professional. If you are in immediate danger, call <strong>988</strong> or <strong>911</strong>.
+          </p>
+          <p className="text-[12px] text-wise-muted-2 mt-2">
+            For this prototype, your information is stored locally in this browser session. Nothing is shared unless you explicitly choose to send a simulated connection request.
+          </p>
+        </Notice>
 
       </div>
     </AppShell>

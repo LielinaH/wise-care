@@ -4,7 +4,10 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import AppShell from '@/components/layout/AppShell';
 import { storage } from '@/lib/storage';
-import { Award, Check, X, ShieldCheck, Mail, Loader2 } from 'lucide-react';
+import { Check, X, Mail, Loader2 } from 'lucide-react';
+import PremiumCard from '@/components/ui/PremiumCard';
+import Badge from '@/components/ui/Badge';
+import Notice from '@/components/ui/Notice';
 
 const INITIAL_PENDING = [
   { id: 'pp-301', name: 'Marin Telehealth Group', license: 'LCSW · CA #LCS24011', specialty: 'Anxiety, Trauma', insurance: 'Private Plan A, Private Plan B, Self-pay', state: 'CA', submitted: '11 hrs ago' },
@@ -33,9 +36,7 @@ export default function AdminVerify() {
     setPending(updated);
     storage.setStorageItem('wisecare.pendingProviders', updated);
 
-    // If approved, we could optionally append them to our active MOCK_PROVIDERS, simulating a live database!
     if (action === 'approved') {
-      // Simulate directory addition
       showToast(`Approved ${name} credentials. Listing published.`);
     } else if (action === 'declined') {
       showToast(`Rejected listing application for ${name}.`);
@@ -76,12 +77,17 @@ export default function AdminVerify() {
       <div className="enter-stagger space-y-6">
         
         {/* Intro */}
-        <div className="card bg-wise-surface border border-wise-hairline rounded-2xl p-5 shadow-sm">
-          <h2 className="text-lg font-semibold tracking-tight">Active Applications Queue</h2>
-          <p className="text-xs text-wise-muted mt-1 leading-relaxed">
-            Verify provider credentials, NPI registrations, and state licensing limits before listing their practice live for care matching.
-          </p>
-        </div>
+        <PremiumCard
+          variant="standard"
+          title="Active Applications Queue"
+          sub="Verify provider credentials, NPI registrations, and state licensing limits before listing their practice live for care matching."
+        >
+          <div className="mt-4">
+            <Notice variant="standard">
+              For this prototype, your information is stored locally in this browser session. Nothing is shared unless you explicitly choose to send a simulated connection request.
+            </Notice>
+          </div>
+        </PremiumCard>
 
         {/* Listings */}
         <div className="space-y-4">
@@ -91,9 +97,15 @@ export default function AdminVerify() {
               {/* Info */}
               <div className="flex-1 space-y-3">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="badge font-mono text-[10px] uppercase font-semibold text-wise-fg">{p.id}</span>
-                  <span className="badge font-mono text-[10px] uppercase">{p.submitted}</span>
-                  <span className="badge teal font-mono text-[10px] uppercase">State Scope: {p.state}</span>
+                  <Badge variant="standard" showDot={false} className="font-mono text-[10px] uppercase font-semibold text-wise-fg">
+                    {p.id}
+                  </Badge>
+                  <Badge variant="standard" showDot={false} className="font-mono text-[10px] uppercase">
+                    {p.submitted}
+                  </Badge>
+                  <Badge variant="teal" showDot={false} className="font-mono text-[10px] uppercase">
+                    State Scope: {p.state}
+                  </Badge>
                 </div>
 
                 <div>
@@ -101,13 +113,13 @@ export default function AdminVerify() {
                   <p className="text-xs text-wise-muted-2 font-mono mt-0.5">{p.license}</p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 text-xs pt-2 border-t border-wise-hairline">
+                <div className="grid grid-cols-2 gap-4 text-xs pt-3 border-t border-wise-hairline">
                   <div>
-                    <span className="text-wise-muted block">Specialties Focus</span>
+                    <span className="text-wise-muted block mb-0.5">Specialties Focus</span>
                     <span className="font-semibold text-wise-fg-soft">{p.specialty}</span>
                   </div>
                   <div>
-                    <span className="text-wise-muted block">Insurances Supported</span>
+                    <span className="text-wise-muted block mb-0.5">Insurances Supported</span>
                     <span className="font-semibold text-wise-fg-soft">{p.insurance}</span>
                   </div>
                 </div>
