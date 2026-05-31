@@ -111,7 +111,7 @@ export default function SignInPage() {
         </div>
 
         <div className="auth-card-wrap">
-          <div className="auth-card">
+          <div className="auth-card" style={{ marginTop: '-40px' }}>
             <h2>Sign in to Wise Care</h2>
             <p className="sub" style={{ marginBottom: '20px' }}>
               Sign in to access your secure care route and packet workspace.
@@ -198,10 +198,6 @@ export default function SignInPage() {
                 )}
               </button>
             </form>
-
-            <div className="privacy-note" style={{ marginTop: '20px', fontSize: '12.5px', color: 'var(--muted)', borderTop: '1px solid var(--hairline)', paddingTop: '14px', lineHeight: 1.55 }}>
-              <strong>This is a demo prototype.</strong> Do not enter real medical or personal health information. Wise Care does not diagnose, provide therapy, prescribe medication, or replace a licensed professional.
-            </div>
           </div>
         </div>
 
