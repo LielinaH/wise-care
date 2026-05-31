@@ -602,8 +602,9 @@ function ConnectionRequestContent() {
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-              <Link href="/care-packet" className="btn btn-ghost">
-                ← Back to packet
+              <Link href="/care-packet" className="btn btn-ghost flex items-center gap-1.5">
+                <ArrowLeft className="w-4 h-4" />
+                <span>Back to packet</span>
               </Link>
               
               <button 

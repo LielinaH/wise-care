@@ -8,7 +8,7 @@ import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { firestoreHelpers } from '@/lib/firebase/firestore';
 import { storage } from '@/lib/storage';
-import { Check, Info, Lock, ArrowRight, Loader2 } from 'lucide-react';
+import { Check, Info, Lock, ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
 import Notice from '@/components/ui/Notice';
 
 const ALL_SPECIALTIES = ['Anxiety', 'Burnout', 'Sleep', 'Relationships', 'Work stress', 'Caregiver stress', 'Depression', 'Trauma'];
@@ -359,7 +359,10 @@ function SoloProviderRegisterContent() {
 
           {/* Form Controls */}
           <div className="flex justify-between items-center pt-4 gap-3 flex-wrap">
-            <Link href="/provider/solo/dashboard" className="btn btn-ghost">← Cancel</Link>
+            <Link href="/provider/solo/dashboard" className="btn btn-ghost flex items-center gap-1.5">
+              <ArrowLeft className="w-4 h-4" />
+              <span>Cancel</span>
+            </Link>
             <button type="submit" className="btn btn-primary flex items-center gap-1.5">
               Save clinician parameters <span className="inner icon-only"><ArrowRight className="w-3 h-3" /></span>
             </button>

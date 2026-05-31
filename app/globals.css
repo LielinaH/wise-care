@@ -883,6 +883,11 @@ img, svg { display: block; max-width: 100%; }
   font-size: 14px;
   color: var(--fg-soft);
   transition: all var(--t-fast);
+  cursor: pointer;
+}
+.check-list li:hover {
+  border-color: var(--border-2);
+  background: var(--surface-2);
 }
 .check-list > li.done { color: var(--muted); background: var(--surface-2); }
 .check-list > li.done > .label { text-decoration: line-through; }

@@ -5,7 +5,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
-import { Check, ArrowRight } from 'lucide-react';
+import { Check, ArrowRight, ArrowLeft } from 'lucide-react';
 import { storage } from '@/lib/storage';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { firestoreHelpers } from '@/lib/firebase/firestore';
@@ -584,10 +584,11 @@ function IntakePageContent() {
             <button
               type="button"
               onClick={handleBack}
-              className="btn btn-ghost btn-sm"
+              className="btn btn-ghost btn-sm flex items-center gap-1"
               style={{ visibility: stepIndex === 0 ? 'hidden' : 'visible' }}
             >
-              ← Back
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Back</span>
             </button>
             
             <span className="text-xs text-wise-muted">
@@ -607,10 +608,7 @@ function IntakePageContent() {
         </PremiumCard>
 
         {/* Notices */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Notice title="Responsible AI">
-            Wise Care uses intake parameters strictly to recommend care pathways. For this prototype, your information is stored in a Firebase-backed demo database. Do not enter real medical or personal health information. Nothing is shared unless you explicitly choose to send a simulated connection request.
-          </Notice>
+        <div style={{ marginTop: '20px' }}>
           <Notice variant="warn" title="Immediate need?">
             You do not need to finish this intake. Call or text the <strong>988 Suicide &amp; Crisis Lifeline</strong> anytime for direct, free, and confidential professional help.
           </Notice>

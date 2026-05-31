@@ -8,7 +8,7 @@ import PremiumCard from '@/components/ui/PremiumCard';
 import Notice from '@/components/ui/Notice';
 import { storage } from '@/lib/storage';
 import { FollowUpResult, CareRouteResult } from '@/lib/types';
-import { Check, Loader2, ArrowRight, Sparkles, Info, AlertTriangle } from 'lucide-react';
+import { Check, Loader2, ArrowRight, ArrowLeft, Sparkles, Info, AlertTriangle } from 'lucide-react';
 
 const BLOCKER_OPTIONS = [
   { v: 'cost', l: 'Cost or insurance confusion', s: 'Rates are too high or insurance status is unclear' },
@@ -314,8 +314,9 @@ function FollowUpPageContent() {
         )}
 
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '24px', gap: '12px', flexWrap: 'wrap' }}>
-          <Link href="/dashboard" className="btn btn-ghost">
-            ← Back to dashboard
+          <Link href="/dashboard" className="btn btn-ghost flex items-center gap-1.5">
+            <ArrowLeft className="w-4 h-4" />
+            <span>Back to dashboard</span>
           </Link>
           <button onClick={handleSave} className="btn btn-primary">
             Save check-in &amp; update plan<span className="inner icon-only"><ArrowRight className="w-3 h-3" /></span>

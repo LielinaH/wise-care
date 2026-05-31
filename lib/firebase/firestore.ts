@@ -24,6 +24,18 @@ import {
   ProviderVerificationDoc 
 } from './types';
 
+const sortDocsByCreatedAtDesc = <T extends { createdAt: any }>(docs: T[]): T[] => {
+  return [...docs].sort((a, b) => {
+    const timeA = a.createdAt?.seconds !== undefined
+      ? a.createdAt.seconds * 1000 + (a.createdAt.nanoseconds || 0) / 1000000
+      : (a.createdAt instanceof Date ? a.createdAt.getTime() : new Date(a.createdAt || 0).getTime());
+    const timeB = b.createdAt?.seconds !== undefined
+      ? b.createdAt.seconds * 1000 + (b.createdAt.nanoseconds || 0) / 1000000
+      : (b.createdAt instanceof Date ? b.createdAt.getTime() : new Date(b.createdAt || 0).getTime());
+    return timeB - timeA;
+  });
+};
+
 export const firestoreHelpers = {
   // --- User Profile helpers ---
   getUserProfile: async (uid: string): Promise<UserRecord | null> => {
@@ -138,22 +150,22 @@ export const firestoreHelpers = {
     if (!isFirebaseConfigured || !db) return [];
     const q = query(
       collection(db, 'referrals'),
-      where('patientId', '==', patientId),
-      orderBy('createdAt', 'desc')
+      where('patientId', '==', patientId)
     );
     const snap = await getDocs(q);
-    return snap.docs.map(doc => ({ referralId: doc.id, ...doc.data() } as ReferralDoc));
+    const results = snap.docs.map(doc => ({ referralId: doc.id, ...doc.data() } as ReferralDoc));
+    return sortDocsByCreatedAtDesc(results);
   },
 
   getReferralsForProvider: async (providerId: string): Promise<ReferralDoc[]> => {
     if (!isFirebaseConfigured || !db) return [];
     const q = query(
       collection(db, 'referrals'),
-      where('providerId', '==', providerId),
-      orderBy('createdAt', 'desc')
+      where('providerId', '==', providerId)
     );
     const snap = await getDocs(q);
-    return snap.docs.map(doc => ({ referralId: doc.id, ...doc.data() } as ReferralDoc));
+    const results = snap.docs.map(doc => ({ referralId: doc.id, ...doc.data() } as ReferralDoc));
+    return sortDocsByCreatedAtDesc(results);
   },
 
   createReferral: async (referral: Omit<ReferralDoc, 'referralId'>): Promise<string> => {
@@ -205,11 +217,11 @@ export const firestoreHelpers = {
     if (!isFirebaseConfigured || !db) return [];
     const q = query(
       collection(db, 'followUps'),
-      where('patientId', '==', patientId),
-      orderBy('createdAt', 'desc')
+      where('patientId', '==', patientId)
     );
     const snap = await getDocs(q);
-    return snap.docs.map(doc => ({ followUpId: doc.id, ...doc.data() } as FollowUpDoc));
+    const results = snap.docs.map(doc => ({ followUpId: doc.id, ...doc.data() } as FollowUpDoc));
+    return sortDocsByCreatedAtDesc(results);
   },
 
   // --- Admin/Verification helpers ---

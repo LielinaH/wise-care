@@ -308,59 +308,71 @@ function UserDashboardContent() {
               </div>
             </div>
             <ul className="check-list">
-              <li className={hasCompletedIntake ? 'done' : ''}>
-                <div className="box">
-                  {hasCompletedIntake && <Check className="w-3 h-3 text-white" />}
-                </div>
-                <span className="label">Complete private intake</span>
-                <span style={{ marginLeft: 'auto', fontSize: '11px', color: hasCompletedIntake ? 'var(--muted)' : 'var(--teal-deep)', fontFamily: 'var(--font-mono)' }}>
-                  {hasCompletedIntake ? 'Done' : 'Next'}
-                </span>
+              <li className={hasCompletedIntake ? 'done' : ''} style={{ padding: 0 }}>
+                <Link href="/intake" style={{ display: 'flex', width: '100%', alignItems: 'center', gap: '12px', padding: '12px 14px', color: 'inherit' }}>
+                  <div className="box">
+                    {hasCompletedIntake && <Check className="w-3 h-3 text-white" />}
+                  </div>
+                  <span className="label">Complete private intake</span>
+                  <span style={{ marginLeft: 'auto', fontSize: '11px', color: hasCompletedIntake ? 'var(--muted)' : 'var(--teal-deep)', fontFamily: 'var(--font-mono)' }}>
+                    {hasCompletedIntake ? 'Done' : 'Next'}
+                  </span>
+                </Link>
               </li>
-              <li className={hasCompletedIntake ? 'done' : ''}>
-                <div className="box">
-                  {hasCompletedIntake && <Check className="w-3 h-3 text-white" />}
-                </div>
-                <span className="label">View suggested care route</span>
-                <span style={{ marginLeft: 'auto', fontSize: '11px', color: hasCompletedIntake ? 'var(--muted)' : 'var(--teal-deep)', fontFamily: 'var(--font-mono)' }}>
-                  {hasCompletedIntake ? 'Done' : ''}
-                </span>
+              <li className={hasCompletedIntake ? 'done' : ''} style={{ padding: 0 }}>
+                <Link href={hasCompletedIntake ? "/care-route" : "/intake"} style={{ display: 'flex', width: '100%', alignItems: 'center', gap: '12px', padding: '12px 14px', color: 'inherit' }}>
+                  <div className="box">
+                    {hasCompletedIntake && <Check className="w-3 h-3 text-white" />}
+                  </div>
+                  <span className="label">View suggested care route</span>
+                  <span style={{ marginLeft: 'auto', fontSize: '11px', color: hasCompletedIntake ? 'var(--muted)' : 'var(--teal-deep)', fontFamily: 'var(--font-mono)' }}>
+                    {hasCompletedIntake ? 'Done' : ''}
+                  </span>
+                </Link>
               </li>
-              <li className={savedProviderIds.length >= 2 ? 'done' : ''}>
-                <div className="box">
-                  {savedProviderIds.length >= 2 && <Check className="w-3 h-3 text-white" />}
-                </div>
-                <span className="label">Save 2–3 support options</span>
-                <span style={{ marginLeft: 'auto', fontSize: '11px', color: savedProviderIds.length >= 2 ? 'var(--muted)' : 'var(--teal-deep)', fontFamily: 'var(--font-mono)' }}>
-                  {savedProviderIds.length >= 2 ? 'Done' : (hasCompletedIntake ? 'Next' : '')}
-                </span>
+              <li className={savedProviderIds.length >= 2 ? 'done' : ''} style={{ padding: 0 }}>
+                <Link href={hasCompletedIntake ? "/matching" : "/intake"} style={{ display: 'flex', width: '100%', alignItems: 'center', gap: '12px', padding: '12px 14px', color: 'inherit' }}>
+                  <div className="box">
+                    {savedProviderIds.length >= 2 && <Check className="w-3 h-3 text-white" />}
+                  </div>
+                  <span className="label">Save 2–3 support options</span>
+                  <span style={{ marginLeft: 'auto', fontSize: '11px', color: savedProviderIds.length >= 2 ? 'var(--muted)' : 'var(--teal-deep)', fontFamily: 'var(--font-mono)' }}>
+                    {savedProviderIds.length >= 2 ? 'Done' : (hasCompletedIntake ? 'Next' : '')}
+                  </span>
+                </Link>
               </li>
-              <li className={sentRequests.length > 0 ? 'done' : ''}>
-                <div className="box">
-                  {sentRequests.length > 0 && <Check className="w-3 h-3 text-white" />}
-                </div>
-                <span className="label">Review &amp; finalize Care Packet</span>
-                <span style={{ marginLeft: 'auto', fontSize: '11px', color: sentRequests.length > 0 ? 'var(--muted)' : 'var(--teal-deep)', fontFamily: 'var(--font-mono)' }}>
-                  {sentRequests.length > 0 ? 'Done' : (hasCompletedIntake && savedProviderIds.length >= 2 ? 'Next' : '')}
-                </span>
+              <li className={sentRequests.length > 0 ? 'done' : ''} style={{ padding: 0 }}>
+                <Link href={hasCompletedIntake ? "/care-packet" : "/intake"} style={{ display: 'flex', width: '100%', alignItems: 'center', gap: '12px', padding: '12px 14px', color: 'inherit' }}>
+                  <div className="box">
+                    {sentRequests.length > 0 && <Check className="w-3 h-3 text-white" />}
+                  </div>
+                  <span className="label">Review &amp; finalize Care Packet</span>
+                  <span style={{ marginLeft: 'auto', fontSize: '11px', color: sentRequests.length > 0 ? 'var(--muted)' : 'var(--teal-deep)', fontFamily: 'var(--font-mono)' }}>
+                    {sentRequests.length > 0 ? 'Done' : (hasCompletedIntake && savedProviderIds.length >= 2 ? 'Next' : '')}
+                  </span>
+                </Link>
               </li>
-              <li className={sentRequests.length > 0 ? 'done' : ''}>
-                <div className="box">
-                  {sentRequests.length > 0 && <Check className="w-3 h-3 text-white" />}
-                </div>
-                <span className="label">Send connection request</span>
-                <span style={{ marginLeft: 'auto', fontSize: '11px', color: sentRequests.length > 0 ? 'var(--muted)' : 'var(--teal-deep)', fontFamily: 'var(--font-mono)' }}>
-                  {sentRequests.length > 0 ? 'Done' : (hasCompletedIntake && savedProviderIds.length >= 2 ? 'Next' : '')}
-                </span>
+              <li className={sentRequests.length > 0 ? 'done' : ''} style={{ padding: 0 }}>
+                <Link href={hasCompletedIntake ? (savedProviderIds.length > 0 ? "/connection-request" : "/matching") : "/intake"} style={{ display: 'flex', width: '100%', alignItems: 'center', gap: '12px', padding: '12px 14px', color: 'inherit' }}>
+                  <div className="box">
+                    {sentRequests.length > 0 && <Check className="w-3 h-3 text-white" />}
+                  </div>
+                  <span className="label">Send connection request</span>
+                  <span style={{ marginLeft: 'auto', fontSize: '11px', color: sentRequests.length > 0 ? 'var(--muted)' : 'var(--teal-deep)', fontFamily: 'var(--font-mono)' }}>
+                    {sentRequests.length > 0 ? 'Done' : (hasCompletedIntake && savedProviderIds.length >= 2 ? 'Next' : '')}
+                  </span>
+                </Link>
               </li>
-              <li className={hasCompletedFollowUp ? 'done' : ''}>
-                <div className="box">
-                  {hasCompletedFollowUp && <Check className="w-3 h-3 text-white" />}
-                </div>
-                <span className="label">Schedule a follow-up check-in</span>
-                <span style={{ marginLeft: 'auto', fontSize: '11px', color: hasCompletedFollowUp ? 'var(--muted)' : 'var(--teal-deep)', fontFamily: 'var(--font-mono)' }}>
-                  {hasCompletedFollowUp ? 'Done' : (sentRequests.length > 0 ? 'Next' : '')}
-                </span>
+              <li className={hasCompletedFollowUp ? 'done' : ''} style={{ padding: 0 }}>
+                <Link href={hasCompletedIntake ? "/follow-up" : "/intake"} style={{ display: 'flex', width: '100%', alignItems: 'center', gap: '12px', padding: '12px 14px', color: 'inherit' }}>
+                  <div className="box">
+                    {hasCompletedFollowUp && <Check className="w-3 h-3 text-white" />}
+                  </div>
+                  <span className="label">Schedule a follow-up check-in</span>
+                  <span style={{ marginLeft: 'auto', fontSize: '11px', color: hasCompletedFollowUp ? 'var(--muted)' : 'var(--teal-deep)', fontFamily: 'var(--font-mono)' }}>
+                    {hasCompletedFollowUp ? 'Done' : (sentRequests.length > 0 ? 'Next' : '')}
+                  </span>
+                </Link>
               </li>
             </ul>
           </div>

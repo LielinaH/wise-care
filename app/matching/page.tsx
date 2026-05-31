@@ -7,7 +7,7 @@ import { storage } from '@/lib/storage';
 import { Provider, IntakeAnswers } from '@/lib/types';
 import { MOCK_PROVIDERS } from '@/lib/data/mockProviders';
 import { matchProviders } from '@/lib/matching/matchProviders';
-import { Check, Star, Send, Filter, Info, AlertTriangle, ArrowRight } from 'lucide-react';
+import { Check, Star, Send, Filter, Info, AlertTriangle, ArrowRight, ArrowLeft } from 'lucide-react';
 import ProviderCard from '@/components/ui/ProviderCard';
 import PremiumCard from '@/components/ui/PremiumCard';
 import Notice from '@/components/ui/Notice';
@@ -232,7 +232,10 @@ function ProviderMatchingPageContent() {
             </p>
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
-            <Link href="/care-route" className="btn btn-quiet btn-sm">← Care route</Link>
+            <Link href="/care-route" className="btn btn-quiet btn-sm flex items-center gap-1">
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Care route</span>
+            </Link>
             <Link href="/care-packet" className="btn btn-ghost btn-sm">Open packet</Link>
           </div>
         </div>
