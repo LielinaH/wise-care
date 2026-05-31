@@ -149,15 +149,18 @@ export default function AppShell({ children, title, crumbs = [], actions }: AppS
   );
 
   return (
-    <div className="min-height-screen bg-wise-bg text-wise-fg flex flex-col">
+    <div className="app">
       {/* Mobile top bar */}
-      <div className="mobile-bar md:hidden flex items-center justify-between p-4 border-b border-wise-hairline bg-wise-surface">
+      <div className="mobile-bar">
         <div className="flex items-center gap-2.5">
-          <div className="brand-mark w-7 h-7"></div>
-          <div className="brand-word text-sm">Wise Care</div>
+          <div className="brand-mark"></div>
+          <div className="brand-word">
+            Wise Care
+            <small>Care Navigation</small>
+          </div>
         </div>
         <button
-          className="mobile-menu-btn w-9 h-9 border border-wise-border rounded-xl flex items-center justify-center text-wise-fg-soft"
+          className="mobile-menu-btn"
           onClick={() => setIsMobileMenuOpen(true)}
           aria-label="Menu"
         >
@@ -166,60 +169,52 @@ export default function AppShell({ children, title, crumbs = [], actions }: AppS
       </div>
 
       {/* Mobile drawer scrim */}
-      {isMobileMenuOpen && (
-        <div
-          className="sidebar-scrim fixed inset-0 bg-black/30 backdrop-blur-sm z-40 md:hidden"
+      <div
+        className={`sidebar-scrim ${isMobileMenuOpen ? 'open' : ''}`}
+        onClick={closeMobileMenu}
+      />
+
+      {/* Sidebar Navigation */}
+      <aside className={`sidebar ${isMobileMenuOpen ? 'open' : ''}`}>
+        {/* Close button inside mobile menu */}
+        <button
+          className="md:hidden absolute top-4 right-4 p-1.5 rounded-lg hover:bg-wise-surface-sunk text-wise-muted"
           onClick={closeMobileMenu}
-        />
-      )}
-
-      <div className="flex flex-1 relative">
-        {/* Sidebar Navigation */}
-        <aside
-          className={`sidebar fixed md:sticky top-0 left-0 w-[268px] h-screen bg-wise-surface border-r border-wise-hairline p-5 flex flex-col gap-5 z-50 transition-transform duration-300 md:translate-x-0 ${
-            isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
-          }`}
         >
-          {/* Close button inside mobile menu */}
-          <button
-            className="md:hidden absolute top-4 right-4 p-1.5 rounded-lg hover:bg-wise-surface-sunk text-wise-muted"
-            onClick={closeMobileMenu}
-          >
-            <X className="w-5 h-5" />
-          </button>
-          {sidebarContent}
-        </aside>
+          <X className="w-5 h-5" />
+        </button>
+        {sidebarContent}
+      </aside>
 
-        {/* Main Panel */}
-        <div className="flex-1 flex flex-col min-w-0">
-          <header className="topbar hidden md:flex items-center justify-between px-8 py-4 border-b border-wise-hairline bg-wise-bg/82 backdrop-blur-md sticky top-0 z-30">
-            <div>
-              {crumbs.length > 0 && (
-                <div className="topbar-crumbs flex items-center gap-2 text-xs text-wise-muted">
-                  {crumbs.map((crumb, idx) => (
-                    <React.Fragment key={idx}>
-                      {idx > 0 && <span className="sep text-wise-border-2">›</span>}
-                      {idx === crumbs.length - 1 ? (
-                        <span className="text-wise-fg-soft font-medium">{crumb}</span>
-                      ) : (
-                        <span className="hover:text-wise-fg cursor-default">{crumb}</span>
-                      )}
-                    </React.Fragment>
-                  ))}
-                </div>
-              )}
-              <div className="topbar-title text-base font-semibold tracking-tight text-wise-fg mt-0.5">
-                {title}
+      {/* Main Panel */}
+      <div className="main">
+        <header className="topbar">
+          <div>
+            {crumbs.length > 0 && (
+              <div className="topbar-crumbs">
+                {crumbs.map((crumb, idx) => (
+                  <React.Fragment key={idx}>
+                    {idx > 0 && <span className="sep">›</span>}
+                    {idx === crumbs.length - 1 ? (
+                      <span className="text-wise-fg font-medium">{crumb}</span>
+                    ) : (
+                      <span>{crumb}</span>
+                    )}
+                  </React.Fragment>
+                ))}
               </div>
+            )}
+            <div className="topbar-title">
+              {title}
             </div>
-            {actions && <div className="topbar-actions flex items-center gap-2">{actions}</div>}
-          </header>
+          </div>
+          {actions && <div className="topbar-actions">{actions}</div>}
+        </header>
 
-          {/* Workspace Area */}
-          <main className="workspace p-5 md:p-8 max-w-[1280px] w-full mx-auto flex-1">
-            {children}
-          </main>
-        </div>
+        {/* Workspace Area */}
+        <main className="workspace">
+          {children}
+        </main>
       </div>
     </div>
   );
