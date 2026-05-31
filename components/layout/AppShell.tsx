@@ -19,7 +19,8 @@ import {
   Menu, 
   X,
   LogOut,
-  Info
+  Info,
+  Users
 } from 'lucide-react';
 import { useAuth } from '@/components/auth/AuthProvider';
 import DemoRoleSwitcher from './DemoRoleSwitcher';
@@ -90,6 +91,7 @@ export default function AppShell({ children, title, crumbs = [], actions }: AppS
         label: 'Operations',
         items: [
           { id: 'admin-dashboard', label: 'Dashboard', href: '/admin/dashboard', icon: Home },
+          { id: 'admin-accounts', label: 'Account Database', href: '/admin/accounts', icon: Users },
           { id: 'admin-verify', label: 'Provider verification', href: '/admin/verify', icon: ShieldCheck },
           { id: 'org-insights', label: 'Organization insights', href: '/organization/insights', icon: BarChart3 },
         ],

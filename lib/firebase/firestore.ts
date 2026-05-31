@@ -40,6 +40,20 @@ export const firestoreHelpers = {
     }, { merge: true });
   },
 
+  getAllUsers: async (): Promise<UserRecord[]> => {
+    if (!isFirebaseConfigured || !db) return [];
+    const snap = await getDocs(collection(db, 'users'));
+    return snap.docs.map(doc => doc.data() as UserRecord);
+  },
+
+  updateUserRole: async (uid: string, role: 'patient' | 'provider_org' | 'solo_provider' | 'admin'): Promise<void> => {
+    if (!isFirebaseConfigured || !db) return;
+    await updateDoc(doc(db, 'users', uid), {
+      role,
+      updatedAt: serverTimestamp(),
+    });
+  },
+
   // --- Patient Profile helpers ---
   getPatientProfile: async (uid: string): Promise<PatientProfile | null> => {
     if (!isFirebaseConfigured || !db) return null;
