@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { firestoreHelpers } from '@/lib/firebase/firestore';
-import { Check, Loader2, ArrowRight, Heart, Users, Building } from 'lucide-react';
+import { Check, Loader2, ArrowRight, Heart, Users, Building, Shield } from 'lucide-react';
 
 const SPECIALTIES = ['Anxiety', 'Burnout', 'Sleep', 'Relationships', 'Work stress', 'Caregiver stress', 'Depression', 'Trauma'];
 
@@ -12,7 +12,7 @@ export default function OnboardingPage() {
   const router = useRouter();
   const { currentUser, userProfile, role, isFirebaseMode, signOut } = useAuth();
 
-  const [selectedRole, setSelectedRole] = useState<'patient' | 'solo_provider' | 'provider_org'>('patient');
+  const [selectedRole, setSelectedRole] = useState<'patient' | 'solo_provider' | 'provider_org' | 'admin'>('patient');
   const [displayName, setDisplayName] = useState('');
   
   // Solo provider states
@@ -77,35 +77,45 @@ export default function OnboardingPage() {
 
           <form onSubmit={handleRoleSubmit} className="space-y-6">
             <div className="field">
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginTop: '4px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px', marginTop: '4px' }}>
                 <button
                   type="button"
                   onClick={() => setSelectedRole('patient')}
                   className={`choice ${selectedRole === 'patient' ? 'selected' : ''}`}
-                  style={{ padding: '12px 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}
+                  style={{ padding: '12px 4px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}
                 >
                   <Heart className="w-4 h-4 text-wise-teal" />
-                  <span style={{ fontSize: '12px', fontWeight: 600 }}>Patient</span>
+                  <span style={{ fontSize: '11px', fontWeight: 600 }}>Patient</span>
                 </button>
                 
                 <button
                   type="button"
                   onClick={() => setSelectedRole('solo_provider')}
                   className={`choice ${selectedRole === 'solo_provider' ? 'selected' : ''}`}
-                  style={{ padding: '12px 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}
+                  style={{ padding: '12px 4px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}
                 >
                   <Users className="w-4 h-4 text-wise-teal" />
-                  <span style={{ fontSize: '12px', fontWeight: 600 }}>Solo Clinician</span>
+                  <span style={{ fontSize: '11px', fontWeight: 600, textAlign: 'center' }}>Clinician</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setSelectedRole('provider_org')}
                   className={`choice ${selectedRole === 'provider_org' ? 'selected' : ''}`}
-                  style={{ padding: '12px 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}
+                  style={{ padding: '12px 4px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}
                 >
                   <Building className="w-4 h-4 text-wise-teal" />
-                  <span style={{ fontSize: '12px', fontWeight: 600 }}>Clinic / Org</span>
+                  <span style={{ fontSize: '11px', fontWeight: 600, textAlign: 'center' }}>Clinic / Org</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedRole('admin')}
+                  className={`choice ${selectedRole === 'admin' ? 'selected' : ''}`}
+                  style={{ padding: '12px 4px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}
+                >
+                  <Shield className="w-4 h-4 text-wise-teal" />
+                  <span style={{ fontSize: '11px', fontWeight: 600 }}>Admin</span>
                 </button>
               </div>
 
@@ -122,6 +132,11 @@ export default function OnboardingPage() {
               {selectedRole === 'provider_org' && (
                 <span style={{ display: 'block', fontSize: '11px', color: 'var(--muted)', marginTop: '8px' }}>
                   Register group clinics, telehealth lines, or EAP wellness panels to accept packet requests.
+                </span>
+              )}
+              {selectedRole === 'admin' && (
+                <span style={{ display: 'block', fontSize: '11px', color: 'var(--muted)', marginTop: '8px' }}>
+                  Access the platform administration dashboard, approve provider credential verifications, and view metrics.
                 </span>
               )}
             </div>
