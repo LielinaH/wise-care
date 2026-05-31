@@ -642,6 +642,11 @@ img, svg { display: block; max-width: 100%; }
 .role-switch button:hover:not(.active) { color: var(--fg-soft); }
 
 /* ─── Landing specific layout classes ─── */
+.section { padding: clamp(56px, 9vw, 120px) 0; position: relative; }
+.section.tint { background: var(--bg-tint); }
+.section-head { max-width: 720px; margin-bottom: 40px; }
+.section-head .kicker { margin-bottom: 14px; display: inline-block; }
+
 .hero {
   position: relative;
   padding: clamp(72px, 12vw, 140px) 0 clamp(56px, 9vw, 100px);
