@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wise Care — Provider dashboard</title>
+  <link rel="stylesheet" href="shared/styles.css">
+  <style>
+    .dash-grid {
+      display: grid;
+      grid-template-columns: 1.6fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 1000px) { .dash-grid { grid-template-columns: 1fr; } }
+
+    .welcome-card {
+      padding: 6px;
+      background: linear-gradient(180deg, var(--surface-2), var(--surface));
+      border-radius: var(--r-xl);
+      border: 1px solid var(--hairline);
+      box-shadow: var(--sh-1);
+    }
+    .welcome-card .inner {
+      background:
+        radial-gradient(70% 90% at 100% 0%, oklch(58% 0.085 195 / 0.10), transparent 60%),
+        var(--surface);
+      border-radius: calc(var(--r-xl) - 6px);
+      border: 1px solid var(--hairline);
+      padding: 28px;
+    }
+    .welcome-card h2 { font-family: var(--font-display); font-size: 1.5rem; font-weight: 600; letter-spacing: -0.022em; margin: 12px 0 8px; }
+
+    .availability-card {
+      padding: 20px;
+      background: var(--surface);
+      border: 1px solid var(--hairline);
+      border-radius: var(--r-lg);
+    }
+    .av-toggle {
+      width: 100%;
+      padding: 14px 18px;
+      background: var(--surface-2);
+      border: 1px solid var(--hairline);
+      border-radius: var(--r-md);
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 14px;
+      font-size: 14px;
+      transition: all var(--t-fast);
+    }
+    .av-toggle.on { background: var(--success-soft); border-color: oklch(56% 0.11 158 / 0.24); }
+    .av-toggle.on .label { color: oklch(28% 0.10 158); font-weight: 500; }
+    .av-toggle .switch {
+      width: 38px; height: 22px;
+      background: var(--teal-deep);
+      border-radius: var(--r-pill);
+      position: relative;
+    }
+    .av-toggle .switch::after {
+      content: ''; position: absolute; top: 2px; right: 2px;
+      width: 18px; height: 22px; height: 18px;
+      background: white; border-radius: 50%;
+      box-shadow: var(--sh-1);
+    }
+
+    .ref-row {
+      display: grid;
+      grid-template-columns: auto 1fr auto auto;
+      gap: 14px;
+      align-items: center;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--hairline);
+      font-size: 13.5px;
+    }
+    .ref-row:last-child { border-bottom: 0; }
+    .ref-row:hover { background: var(--surface-2); border-radius: var(--r-sm); margin: 0 -10px; padding-left: 10px; padding-right: 10px; }
+    .ref-id {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+    }
+  </style>
+</head>
+<body>
+  <div id="app-root"></div>
+
+  <script src="shared/app.js"></script>
+  <script>
+    const counts = { accepted: 12, waitlist: 4, declined: 3 };
+
+    document.getElementById('app-root').innerHTML = appShellHTML(`
+      <div class="enter-stagger stack" style="--gap: 20px;">
+
+        <div class="welcome-card">
+          <div class="inner">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;">
+              <div>
+                <span class="kicker">Welcome back · Quietford Counseling</span>
+                <h2>You have <span style="color: var(--teal-deep);">5 new referrals</span> this week.</h2>
+                <p style="color: var(--muted); margin: 0; max-width: 50ch; line-height: 1.55;">
+                  Three are routine, two are flagged as warming up the matching agent prefers your practice for sleep + anxiety. Average response time across providers is 1.4 days.
+                </p>
+              </div>
+              <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                <span class="badge teal"><span class="dot"></span>Profile · Listings live</span>
+                <a href="provider-inbox.html" class="btn btn-primary">Open referral inbox<span class="inner">5 new →</span></a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dash-grid">
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <h3>Recent referrals</h3>
+                <div class="sub">Sorted by urgency. Privacy: providers see only what the user shared.</div>
+              </div>
+              <a href="provider-inbox.html" class="btn btn-quiet btn-sm">View all →</a>
+            </div>
+            <div>
+              ${MOCK_REFERRALS.slice(0, 4).map(r => `
+                <div class="ref-row">
+                  <span class="ref-id">${r.id.toUpperCase()}</span>
+                  <div>
+                    <div style="font-weight: 500;">${r.name}</div>
+                    <div style="font-size: 12px; color: var(--muted); margin-top: 2px;">${r.route} · ${r.insurance}</div>
+                  </div>
+                  <span class="badge ${r.risk === 'medium' ? 'warn' : r.risk === 'high' ? 'danger' : 'success'}">${r.risk.toUpperCase()} RISK</span>
+                  <span style="font-size: 12px; color: var(--muted); font-family: var(--font-mono); letter-spacing: 0.04em;">${r.received}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <div class="stack" style="--gap: 16px;">
+            <div class="availability-card">
+              <h4 style="margin: 0 0 16px; font-size: 13px; font-family: var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 600;">Availability</h4>
+              <div class="av-toggle on">
+                <div>
+                  <div class="label">Accepting new clients</div>
+                  <div style="font-size: 12px; color: oklch(34% 0.10 158); margin-top: 2px;">3 evening slots open this week</div>
+                </div>
+                <span class="switch"></span>
+              </div>
+              <button class="btn btn-ghost btn-sm" style="width: 100%; justify-content: center;">Edit availability</button>
+            </div>
+
+            <div class="card" style="padding: 22px;">
+              <h4 style="margin: 0 0 12px; font-size: 13px; font-family: var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 600;">Last 30 days</h4>
+              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 12px;">
+                <div><div class="kpi-value num">${counts.accepted}</div><div style="font-size: 11.5px; color: var(--muted); margin-top: 2px;">Accepted</div></div>
+                <div><div class="kpi-value num" style="color: oklch(48% 0.13 78);">${counts.waitlist}</div><div style="font-size: 11.5px; color: var(--muted); margin-top: 2px;">Waitlist</div></div>
+                <div><div class="kpi-value num" style="color: var(--muted);">${counts.declined}</div><div style="font-size: 11.5px; color: var(--muted); margin-top: 2px;">Declined</div></div>
+              </div>
+              <div style="font-size: 12px; color: var(--muted); padding-top: 12px; border-top: 1px solid var(--hairline);">Average response time <strong style="color:var(--fg);">1.4 days</strong> · Network avg 1.8</div>
+            </div>
+
+            <div class="card" style="padding: 22px;">
+              <h4 style="margin: 0 0 12px; font-size: 13px; font-family: var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 600;">Profile health</h4>
+              <ul class="b-list">
+                <li><span class="dot" style="background: oklch(56% 0.11 158);"></span><div><span style="font-size: 13.5px; font-weight: 500;">License verified</span><div style="font-size: 12px; color: var(--muted);">Approved 4 days ago</div></div></li>
+                <li><span class="dot" style="background: oklch(56% 0.11 158);"></span><div><span style="font-size: 13.5px; font-weight: 500;">Specialty tags up to date</span><div style="font-size: 12px; color: var(--muted);">6 specialties</div></div></li>
+                <li><span class="dot" style="background: oklch(70% 0.13 78);"></span><div><span style="font-size: 13.5px; font-weight: 500;">Add a practice photo</span><div style="font-size: 12px; color: var(--muted);">Optional — improves match perception</div></div></li>
+              </ul>
+              <a href="provider-register.html" class="btn btn-ghost btn-sm" style="margin-top: 14px; width: 100%; justify-content: center;">Open profile</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="notice">
+          <span id="info-ico"></span>
+          <div><strong style="color:var(--fg);">Privacy reminder.</strong> Wise Care matches users to your practice based on the criteria you set. Users see your published profile. You only see what users chose to share when they sent a referral.</div>
+        </div>
+
+      </div>
+    `);
+
+    mountAppShell({
+      active: 'provider-dashboard',
+      title: 'Dashboard',
+      crumbs: ['Practice', 'Dashboard'],
+      actions: `<a href="provider-inbox.html" class="btn btn-primary btn-sm">Referral inbox<span class="inner">5 →</span></a>`,
+    });
+
+    document.getElementById('info-ico').innerHTML = icon('info', 16);
+  </script>
+</body>
+</html>

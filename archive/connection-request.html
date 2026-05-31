@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wise Care — Send connection request</title>
+  <link rel="stylesheet" href="shared/styles.css">
+  <style>
+    .req-grid {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 24px;
+      align-items: flex-start;
+    }
+    @media (max-width: 1000px) { .req-grid { grid-template-columns: 1fr; } }
+
+    .selected-provider {
+      padding: 22px;
+      background: linear-gradient(180deg, oklch(96% 0.018 195), var(--surface));
+      border: 1px solid oklch(58% 0.085 195 / 0.28);
+      border-radius: var(--r-lg);
+      display: grid;
+      grid-template-columns: 56px 1fr auto;
+      gap: 18px;
+      align-items: center;
+      margin-bottom: 22px;
+    }
+    .selected-provider .avatar {
+      width: 56px; height: 56px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, oklch(94% 0.025 195), oklch(90% 0.04 230));
+      color: var(--teal-deep);
+      display: grid; place-items: center;
+      font-family: var(--font-display); font-weight: 600; font-size: 18px;
+    }
+    .selected-provider .name { font-weight: 600; font-size: 1.05rem; letter-spacing: -0.012em; }
+    .selected-provider .meta { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+    .share-section {
+      padding: 22px;
+      background: var(--surface);
+      border: 1px solid var(--hairline);
+      border-radius: var(--r-lg);
+      margin-bottom: 14px;
+    }
+    .share-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--hairline);
+      font-size: 14px;
+    }
+    .share-row:last-child { border-bottom: 0; padding-bottom: 0; }
+    .share-row:first-child { padding-top: 0; }
+    .share-row .label { color: var(--fg-soft); }
+    .share-row .switch {
+      width: 38px; height: 22px;
+      background: var(--teal-deep);
+      border-radius: var(--r-pill);
+      position: relative;
+      cursor: pointer;
+      transition: background var(--t-fast);
+    }
+    .share-row .switch::after {
+      content: '';
+      position: absolute;
+      top: 2px; right: 2px;
+      width: 18px; height: 18px;
+      background: white;
+      border-radius: 50%;
+      box-shadow: var(--sh-1);
+      transition: all var(--t-base) var(--spring);
+    }
+    .share-row .switch.off { background: var(--surface-sunk); }
+    .share-row .switch.off::after { left: 2px; right: auto; }
+
+    .preview-msg {
+      padding: 20px;
+      background: var(--surface-2);
+      border: 1px solid var(--hairline);
+      border-radius: var(--r-md);
+      font-size: 14px;
+      line-height: 1.65;
+      color: var(--fg);
+      position: relative;
+      max-height: 360px;
+      overflow-y: auto;
+    }
+    .preview-msg::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 18px; bottom: 18px;
+      width: 3px;
+      background: linear-gradient(180deg, var(--teal), var(--teal-deep));
+      border-radius: var(--r-pill);
+    }
+
+    .consent-card {
+      padding: 22px;
+      background: var(--surface);
+      border: 1px solid var(--hairline);
+      border-radius: var(--r-lg);
+      margin-bottom: 14px;
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+    }
+    .consent-card.checked { border-color: var(--teal); background: var(--teal-soft); }
+    .consent-card .box {
+      width: 22px; height: 22px;
+      border-radius: 6px;
+      border: 1.5px solid var(--border-2);
+      background: var(--surface);
+      flex-shrink: 0;
+      display: grid; place-items: center;
+      cursor: pointer;
+      margin-top: 2px;
+    }
+    .consent-card.checked .box { background: var(--teal-deep); border-color: var(--teal-deep); color: white; }
+    .consent-card .box svg { opacity: 0; }
+    .consent-card.checked .box svg { opacity: 1; }
+    .consent-card h4 { margin: 0 0 6px; font-size: 14.5px; font-weight: 600; }
+    .consent-card p { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.55; }
+    .consent-card.checked p { color: oklch(34% 0.07 200); }
+
+    .summary-pane {
+      padding: 22px;
+      background: var(--surface);
+      border: 1px solid var(--hairline);
+      border-radius: var(--r-lg);
+      position: sticky;
+      top: 80px;
+    }
+    @media (max-width: 1000px) { .summary-pane { position: static; } }
+
+    /* Confirmation state */
+    .confirm-wrap {
+      max-width: 640px;
+      margin: 0 auto;
+      text-align: center;
+      padding: 32px 0;
+    }
+    .confirm-circle {
+      width: 76px; height: 76px;
+      border-radius: 50%;
+      background: var(--success-soft);
+      color: oklch(38% 0.11 158);
+      display: grid; place-items: center;
+      margin: 0 auto 22px;
+      position: relative;
+    }
+    .confirm-circle::after {
+      content: '';
+      position: absolute;
+      inset: -8px;
+      border-radius: 50%;
+      background: oklch(56% 0.11 158 / 0.12);
+      z-index: -1;
+    }
+    .confirm-wrap h2 { font-family: var(--font-display); font-size: 1.9rem; font-weight: 600; letter-spacing: -0.024em; margin: 14px 0 12px; }
+    .confirm-wrap p { color: var(--fg-soft); max-width: 44ch; margin: 0 auto 26px; line-height: 1.55; }
+
+    .next-list {
+      max-width: 480px;
+      margin: 32px auto 0;
+      text-align: left;
+      padding: 24px;
+      background: var(--surface);
+      border: 1px solid var(--hairline);
+      border-radius: var(--r-lg);
+    }
+    .next-list h4 { margin: 0 0 14px; font-size: 13px; font-family: var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div id="app-root"></div>
+
+  <script src="shared/app.js"></script>
+  <script>
+    let consent = false;
+    let sent = false;
+    let shareToggles = {
+      concerns: true,
+      timeline: true,
+      impact: true,
+      goals: true,
+      questions: true,
+      insurance: true,
+      safety: true,
+    };
+
+    function renderForm() {
+      const selectedId = new URLSearchParams(window.location.search).get('provider') || 'p-01';
+      const provider = MOCK_PROVIDERS.find(p => p.id === selectedId) || MOCK_PROVIDERS[0];
+      const initials = provider.name.split(/[ —]+/).filter(Boolean).slice(0,2).map(s => s[0]).join('');
+
+      document.getElementById('app-root').innerHTML = appShellHTML(`
+        <div class="enter">
+          <div style="margin-bottom: 22px;">
+            <span class="kicker">Connection request</span>
+            <h2 class="h2" style="margin: 8px 0 4px;">Share your Care Packet with one provider.</h2>
+            <p style="color: var(--muted); margin: 0; font-size: 14.5px; max-width: 60ch;">
+              Review what will be shared, give consent, and send. The provider sees only what you choose.
+            </p>
+          </div>
+
+          <div class="selected-provider">
+            <div class="avatar">${initials}</div>
+            <div>
+              <div class="name">${provider.name}</div>
+              <div class="meta">${provider.type} · ${provider.licensure} · ${provider.modality.join(' · ')}</div>
+            </div>
+            <a href="provider-matching.html" class="btn btn-ghost btn-sm">Change</a>
+          </div>
+
+          <div class="req-grid">
+            <div>
+              <div class="share-section">
+                <h4 style="margin: 0 0 14px; font-size: 13px; font-family: var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 600;">What will be shared</h4>
+                ${[
+                  ['concerns', 'Main concerns', 'Anxiety + sleep difficulty'],
+                  ['timeline', 'Timeline', '6 weeks, worsening recently'],
+                  ['impact', 'Daily impact', 'Sleep, concentration, mood'],
+                  ['goals', 'Care goals', 'Sleep consistency, reduce evening worry'],
+                  ['questions', 'Questions to ask', '4 questions for the first session'],
+                  ['insurance', 'Insurance &amp; preferences', 'Aetna · telehealth · weekday evenings'],
+                  ['safety', 'Safety check', 'No safety concerns'],
+                ].map(([k, label, desc]) => `
+                  <div class="share-row">
+                    <div>
+                      <div class="label" style="font-weight: 500; color: var(--fg);">${label}</div>
+                      <div style="font-size: 12.5px; color: var(--muted); margin-top: 2px;">${desc}</div>
+                    </div>
+                    <button class="switch ${shareToggles[k] ? '' : 'off'}" data-toggle="${k}" type="button"></button>
+                  </div>
+                `).join('')}
+              </div>
+
+              <div class="share-section">
+                <h4 style="margin: 0 0 14px; font-size: 13px; font-family: var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 600;">Message preview</h4>
+                <div class="preview-msg">
+                  <p style="margin-top: 0;">Hi ${provider.name.split('—')[0].trim()},</p>
+                  <p>I'm reaching out through Wise Care to ask about starting weekly therapy. I have a six-week pattern of anxiety with evening worry and waking at 3am, with impact on my concentration at work.</p>
+                  ${shareToggles.goals ? '<p>My goals are sleeping more consistently and bringing the intensity of evening worry from a 7/10 to a 4/10 most days.</p>' : ''}
+                  ${shareToggles.insurance ? '<p>I have Aetna insurance and can self-pay sliding scale as a backup. Telehealth preferred. Weekday evenings work best.</p>' : ''}
+                  ${shareToggles.safety ? '<p>I have no current safety concerns.</p>' : ''}
+                  <p>I've attached a short structured summary prepared with Wise Care. Are you taking new clients in the next two weeks?</p>
+                  <p style="margin-bottom: 0;">Thank you,<br>Alex</p>
+                </div>
+                <div style="margin-top: 14px; font-size: 12.5px; color: var(--muted); display:flex; align-items:center; gap: 6px;">
+                  <span id="prev-ico"></span>Preview updates as you adjust what's shared above.
+                </div>
+              </div>
+
+              <div class="consent-card ${consent ? 'checked' : ''}" id="consent-card">
+                <div class="box" id="consent-box">${icon('check', 14)}</div>
+                <div>
+                  <h4>I consent to share the items above with this provider.</h4>
+                  <p>This is the only way the provider sees your information. You can withdraw consent at any time before the provider opens the request. Wise Care does not share anything else.</p>
+                </div>
+              </div>
+
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+                <a href="care-packet.html" class="btn btn-ghost">← Back to packet</a>
+                <button class="btn btn-primary btn-lg" id="send-btn" ${!consent ? 'disabled style="opacity:0.55;cursor:not-allowed;"' : ''}>
+                  Send connection request
+                  <span class="inner">${icon('send', 12)} Send</span>
+                </button>
+              </div>
+            </div>
+
+            <aside class="summary-pane">
+              <h4 style="margin: 0 0 14px; font-size: 13px; font-family: var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 600;">Request summary</h4>
+              <div style="font-size: 13.5px; color: var(--fg-soft); line-height: 1.6;">
+                <div style="padding: 8px 0; border-bottom: 1px solid var(--hairline); display:flex; justify-content:space-between;"><span>Items shared</span><strong style="color:var(--fg);" id="share-count">${Object.values(shareToggles).filter(Boolean).length} / 7</strong></div>
+                <div style="padding: 8px 0; border-bottom: 1px solid var(--hairline); display:flex; justify-content:space-between;"><span>Format</span><strong style="color:var(--fg);">Care Packet</strong></div>
+                <div style="padding: 8px 0; border-bottom: 1px solid var(--hairline); display:flex; justify-content:space-between;"><span>Provider sees</span><strong style="color:var(--fg);">Only above</strong></div>
+                <div style="padding: 8px 0; display:flex; justify-content:space-between;"><span>Expected reply</span><strong style="color:var(--fg);">1–3 days</strong></div>
+              </div>
+
+              <div style="margin-top: 18px; padding: 14px; background: var(--teal-soft); border: 1px solid oklch(58% 0.085 195 / 0.22); border-radius: var(--r-md); font-size: 12.5px; color: oklch(32% 0.07 200); line-height: 1.55;">
+                <strong style="color: var(--teal-deep);">${icon('lock', 12)} You stay in control</strong>
+                You can withdraw the request before the provider opens it. Withdrawn requests are not visible to anyone.
+              </div>
+            </aside>
+          </div>
+        </div>
+      `);
+
+      mountAppShell({
+        active: 'connection-request',
+        title: 'Connection request',
+        crumbs: ['Care', 'Care packet', 'Send request'],
+        actions: '',
+      });
+
+      document.getElementById('prev-ico').innerHTML = icon('info', 14);
+
+      document.querySelectorAll('[data-toggle]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          shareToggles[btn.dataset.toggle] = !shareToggles[btn.dataset.toggle];
+          renderForm();
+        });
+      });
+
+      const consentBox = document.getElementById('consent-card');
+      consentBox.addEventListener('click', () => {
+        consent = !consent;
+        renderForm();
+      });
+
+      const sendBtn = document.getElementById('send-btn');
+      if (consent) {
+        sendBtn.addEventListener('click', () => {
+          addSentRequest(provider.id);
+          sent = true;
+          renderConfirmation(provider);
+        });
+      }
+    }
+
+    function renderConfirmation(provider) {
+      document.getElementById('app-root').innerHTML = appShellHTML(`
+        <div class="confirm-wrap enter">
+          <div class="confirm-circle">${icon('check', 32)}</div>
+          <span class="kicker">Connection request sent</span>
+          <h2>Your request is on its way to ${provider.name.split('—')[0].trim()}.</h2>
+          <p>You'll get a notification when the provider responds — typically within 1–3 business days. In the meantime, we'll keep your dashboard updated.</p>
+
+          <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+            <a href="user-dashboard.html" class="btn btn-primary">Back to dashboard<span class="inner">→</span></a>
+            <a href="provider-matching.html" class="btn btn-ghost">Save more options</a>
+          </div>
+
+          <div class="next-list">
+            <h4>What happens next</h4>
+            <ul class="b-list">
+              <li><span class="num-dot">1</span><div><strong style="display:block;color:var(--fg);">Wait for the provider's response</strong><span style="font-size:13px;color:var(--muted);">Most providers respond within 1–3 business days. You'll get a notification.</span></div></li>
+              <li><span class="num-dot">2</span><div><strong style="display:block;color:var(--fg);">If urgency rises, call directly</strong><span style="font-size:13px;color:var(--muted);">You can reach out by phone if your situation feels more time-sensitive.</span></div></li>
+              <li><span class="num-dot">3</span><div><strong style="display:block;color:var(--fg);">Use crisis support if needed</strong><span style="font-size:13px;color:var(--muted);">If your risk increases, call or text <strong>988</strong>. You don't have to wait.</span></div></li>
+              <li><span class="num-dot">4</span><div><strong style="display:block;color:var(--fg);">Check back in a week</strong><span style="font-size:13px;color:var(--muted);">We'll prompt a follow-up — what worked, what's stuck, what to try next.</span></div></li>
+            </ul>
+          </div>
+
+          <p style="margin-top: 28px; font-size: 12.5px; color: var(--muted);">
+            Need urgent help? <a href="#" style="color: var(--teal-deep); font-weight: 500;">988 Suicide &amp; Crisis Lifeline</a> · <a href="#" style="color: var(--teal-deep); font-weight: 500;">911 for emergencies</a>
+          </p>
+        </div>
+      `);
+      mountAppShell({
+        active: 'connection-request',
+        title: 'Request sent',
+        crumbs: ['Care', 'Care packet', 'Request sent'],
+        actions: `<a href="follow-up.html" class="btn btn-ghost btn-sm">Schedule follow-up</a>`,
+      });
+    }
+
+    renderForm();
+  </script>
+</body>
+</html>

@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wise Care — Matched support options</title>
+  <link rel="stylesheet" href="shared/styles.css">
+  <style>
+    .match-grid {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 24px;
+      align-items: flex-start;
+    }
+    @media (max-width: 1000px) { .match-grid { grid-template-columns: 1fr; } }
+
+    .filters {
+      position: sticky;
+      top: 80px;
+      padding: 22px;
+      background: var(--surface);
+      border: 1px solid var(--hairline);
+      border-radius: var(--r-lg);
+      box-shadow: var(--sh-1);
+    }
+    @media (max-width: 1000px) { .filters { position: static; } }
+    .filters h4 { display: flex; align-items: center; gap: 8px; margin: 0 0 16px; font-size: 13px; font-weight: 600; font-family: var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+    .filter-block { padding: 14px 0; border-bottom: 1px solid var(--hairline); }
+    .filter-block:last-child { border-bottom: 0; }
+    .filter-block .lbl { font-size: 12px; font-weight: 600; color: var(--fg-soft); margin-bottom: 8px; display: block; }
+    .filter-pill-row { display: flex; flex-wrap: wrap; gap: 6px; }
+    .filter-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 10px;
+      background: var(--surface-2);
+      border: 1px solid var(--hairline);
+      border-radius: var(--r-pill);
+      font-size: 12px;
+      color: var(--fg-soft);
+      cursor: pointer;
+      transition: all var(--t-fast);
+    }
+    .filter-pill.active { background: var(--teal-soft); color: var(--teal-deep); border-color: oklch(58% 0.085 195 / 0.22); }
+    .filter-pill:hover { background: var(--surface-sunk); }
+
+    .results-head {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      margin-bottom: 16px;
+    }
+    .results-count { font-size: 13.5px; color: var(--fg-soft); }
+    .results-count strong { color: var(--fg); font-weight: 600; }
+
+    .match-card {
+      padding: 6px;
+      background: linear-gradient(180deg, var(--surface-2), var(--surface));
+      border: 1px solid var(--hairline);
+      border-radius: var(--r-xl);
+      margin-bottom: 14px;
+      transition: all var(--t-fast) var(--spring);
+    }
+    .match-card:hover { box-shadow: var(--sh-2); transform: translateY(-1px); }
+    .match-card.featured {
+      background: linear-gradient(180deg, oklch(94% 0.025 195), oklch(98% 0.012 195));
+      border-color: oklch(58% 0.085 195 / 0.32);
+    }
+    .match-card .inner {
+      background: var(--surface);
+      border-radius: calc(var(--r-xl) - 6px);
+      border: 1px solid var(--hairline);
+      padding: 22px;
+    }
+    .match-head {
+      display: grid;
+      grid-template-columns: 52px 1fr auto;
+      gap: 16px;
+      align-items: start;
+      margin-bottom: 14px;
+    }
+    .match-avatar {
+      width: 52px; height: 52px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, oklch(94% 0.025 195), oklch(90% 0.04 230));
+      color: var(--teal-deep);
+      display: grid; place-items: center;
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+    .match-avatar.crisis { background: linear-gradient(135deg, oklch(70% 0.13 25), var(--danger)); color: white; }
+    .match-avatar.community { background: linear-gradient(135deg, oklch(94% 0.025 240), oklch(88% 0.05 220)); color: oklch(38% 0.10 240); }
+    .match-name { font-weight: 600; font-size: 1rem; letter-spacing: -0.012em; }
+    .match-meta { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+    .match-score {
+      display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
+    }
+    .match-score .score {
+      font-family: var(--font-display);
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: var(--teal-deep);
+      letter-spacing: -0.012em;
+      font-variant-numeric: tabular-nums;
+    }
+    .match-score .pct { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em; color: var(--muted); }
+
+    .match-body {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      padding: 16px 0;
+      border-top: 1px solid var(--hairline);
+      border-bottom: 1px solid var(--hairline);
+    }
+    @media (max-width: 700px) { .match-body { grid-template-columns: 1fr 1fr; } }
+    .match-field .k { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+    .match-field .v { font-size: 13px; font-weight: 500; color: var(--fg); margin-top: 4px; }
+
+    .match-reason {
+      padding: 12px 14px;
+      background: var(--teal-soft);
+      border: 1px solid oklch(58% 0.085 195 / 0.22);
+      border-radius: var(--r-md);
+      margin-top: 14px;
+      font-size: 13px;
+      color: oklch(32% 0.07 200);
+      display: flex; gap: 10px;
+    }
+    .match-reason strong { color: var(--teal-deep); font-weight: 600; }
+
+    .match-foot {
+      display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 14px;
+      flex-wrap: wrap;
+    }
+    .match-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+
+    .resource-callout {
+      padding: 22px;
+      margin: 16px 0;
+      background: var(--danger-soft);
+      border: 1px solid oklch(58% 0.17 25 / 0.28);
+      border-radius: var(--r-lg);
+      display: flex; gap: 16px; align-items: flex-start;
+    }
+    .resource-callout .ico { width: 36px; height: 36px; border-radius: 10px; background: var(--danger); color: white; display: grid; place-items: center; flex-shrink: 0; }
+    .resource-callout h4 { margin: 0 0 6px; color: oklch(38% 0.13 25); font-weight: 600; font-size: 14.5px; }
+    .resource-callout p { margin: 0 0 10px; color: oklch(40% 0.13 25); font-size: 13.5px; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <div id="app-root"></div>
+
+  <script src="shared/app.js"></script>
+  <script>
+    let saved = new Set(getSaved());
+    let activeFilters = {
+      type: 'all',
+      modality: 'all',
+      insurance: 'all',
+      slidingScale: false,
+    };
+
+    const FILTER_CHIPS = {
+      type: [
+        { v: 'all', l: 'All types' },
+        { v: 'Therapist', l: 'Therapists' },
+        { v: 'Medication evaluation', l: 'Medication eval' },
+        { v: 'Group practice', l: 'Group practice' },
+        { v: 'Community clinic', l: 'Community clinic' },
+        { v: 'Support group', l: 'Support group' },
+        { v: 'Crisis support', l: 'Crisis support' },
+      ],
+      modality: [
+        { v: 'all', l: 'Any' },
+        { v: 'Telehealth', l: 'Telehealth' },
+        { v: 'In-person', l: 'In-person' },
+      ],
+      insurance: [
+        { v: 'all', l: 'Any payment' },
+        { v: 'Aetna', l: 'Aetna' },
+        { v: 'BCBS', l: 'BCBS' },
+        { v: 'Cigna', l: 'Cigna' },
+        { v: 'United', l: 'United' },
+        { v: 'Sliding scale', l: 'Sliding scale' },
+        { v: 'Self-pay', l: 'Self-pay' },
+        { v: 'Free', l: 'Free' },
+      ],
+    };
+
+    function passes(p) {
+      if (activeFilters.type !== 'all' && p.type !== activeFilters.type) return false;
+      if (activeFilters.modality !== 'all' && !p.modality.includes(activeFilters.modality)) return false;
+      if (activeFilters.insurance !== 'all' && !p.insurance.some(i => i.toLowerCase().includes(activeFilters.insurance.toLowerCase()))) return false;
+      if (activeFilters.slidingScale && !p.slidingScale) return false;
+      return true;
+    }
+
+    function avatarTextFor(p) {
+      const parts = p.name.split(/[ —]+/).filter(Boolean);
+      const t = p.type;
+      if (t === 'Crisis support') return '988';
+      if (t === 'Support group') return 'SG';
+      if (t === 'Community clinic') return 'CC';
+      return (parts[0]?.[0] || '') + (parts[1]?.[0] || '');
+    }
+
+    function render() {
+      const filtered = MOCK_PROVIDERS.filter(passes);
+
+      document.getElementById('app-root').innerHTML = appShellHTML(`
+        <div class="enter">
+
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:24px;flex-wrap:wrap;">
+            <div>
+              <span class="kicker">Matched for you</span>
+              <h2 class="h2" style="margin: 8px 0 4px;">Support options that fit your route.</h2>
+              <p style="color: var(--muted); margin: 0; font-size: 14.5px;">Filtered by your insurance, location, and preferences. Save options you'd like to revisit.</p>
+            </div>
+            <div style="display:flex;gap:8px;">
+              <a href="care-route.html" class="btn btn-quiet btn-sm">← Care route</a>
+              <a href="care-packet.html" class="btn btn-ghost btn-sm">Open packet</a>
+            </div>
+          </div>
+
+          <div class="match-grid">
+            <aside class="filters">
+              <h4>${icon('filter', 14)} Filters</h4>
+
+              <div class="filter-block">
+                <span class="lbl">Support type</span>
+                <div class="filter-pill-row" id="filter-type"></div>
+              </div>
+
+              <div class="filter-block">
+                <span class="lbl">How you meet</span>
+                <div class="filter-pill-row" id="filter-modality"></div>
+              </div>
+
+              <div class="filter-block">
+                <span class="lbl">Payment / insurance</span>
+                <div class="filter-pill-row" id="filter-insurance"></div>
+              </div>
+
+              <div class="filter-block" style="display:flex;align-items:center;justify-content:space-between;">
+                <span class="lbl" style="margin:0;">Sliding scale only</span>
+                <button class="filter-pill ${activeFilters.slidingScale ? 'active' : ''}" id="sliding-toggle">${activeFilters.slidingScale ? 'On' : 'Off'}</button>
+              </div>
+
+              <div class="filter-block">
+                <span class="lbl">Saved to plan</span>
+                <div style="font-size: 12.5px; color: var(--muted-2);">${saved.size} option${saved.size === 1 ? '' : 's'} saved</div>
+                ${saved.size > 0 ? `<a href="care-packet.html" style="display:inline-block;margin-top:6px;font-size:12px;color:var(--teal-deep);font-weight:500;">Review saved →</a>` : ''}
+              </div>
+            </aside>
+
+            <div>
+              <div class="results-head">
+                <div class="results-count"><strong>${filtered.length}</strong> option${filtered.length === 1 ? '' : 's'} match your filters · ranked by fit</div>
+                <select class="select" style="width:auto;font-size:13px;padding:7px 12px;">
+                  <option>Sort · Best match</option>
+                  <option>Sort · Earliest availability</option>
+                  <option>Sort · Lowest cost</option>
+                </select>
+              </div>
+
+              ${filtered.length === 0 ? `
+                <div class="card" style="text-align:center; padding: 40px;">
+                  <p class="muted">No options match these filters. Try widening the criteria.</p>
+                </div>
+              ` : ''}
+
+              ${filtered.map((p, i) => {
+                const isCrisis = p.type === 'Crisis support';
+                const isCommunity = p.type === 'Community clinic' || p.type === 'Support group';
+                const isFeatured = i === 0 && !isCrisis;
+                const avatarClass = isCrisis ? 'crisis' : isCommunity ? 'community' : '';
+                if (isCrisis) {
+                  return `
+                    <div class="resource-callout">
+                      <div class="ico">${icon('alert', 18)}</div>
+                      <div style="flex:1;">
+                        <h4>${p.name}</h4>
+                        <p>${p.matchReason} If your safety changes, this is the route — not therapy in three weeks.</p>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                          <a href="#" class="btn btn-danger btn-sm">Call or text 988</a>
+                          <a href="#" class="btn btn-ghost btn-sm">Chat online</a>
+                        </div>
+                      </div>
+                    </div>
+                  `;
+                }
+                return `
+                  <div class="match-card ${isFeatured ? 'featured' : ''}">
+                    <div class="inner">
+                      <div class="match-head">
+                        <div class="match-avatar ${avatarClass}">${avatarTextFor(p)}</div>
+                        <div>
+                          <div class="match-name">${p.name}</div>
+                          <div class="match-meta">${p.type} · ${p.licensure}</div>
+                          ${isFeatured ? '<span class="badge teal" style="margin-top:6px;">⭑ Best match</span>' : ''}
+                        </div>
+                        <div class="match-score">
+                          <span class="score">${p.matchScore}<span style="color:var(--muted);font-weight:500;">%</span></span>
+                          <span class="pct">FIT SCORE</span>
+                        </div>
+                      </div>
+
+                      <div class="match-body">
+                        <div class="match-field"><div class="k">Specialty</div><div class="v">${p.specialty.join(' · ')}</div></div>
+                        <div class="match-field"><div class="k">Modality</div><div class="v">${p.modality.join(' · ')}</div></div>
+                        <div class="match-field"><div class="k">Next availability</div><div class="v">${p.nextAvailable}</div></div>
+                        <div class="match-field"><div class="k">Cost / payment</div><div class="v">${p.sessionCost}</div></div>
+                      </div>
+
+                      <div class="match-reason">
+                        <span style="color:var(--teal-deep);" id="m-${p.id}-ico"></span>
+                        <span><strong>Why this match:</strong> ${p.matchReason}</span>
+                      </div>
+
+                      <div class="match-foot">
+                        <div class="match-tags">
+                          ${p.insurance.slice(0,3).map(i => `<span class="badge">${i}</span>`).join('')}
+                          ${p.slidingScale ? `<span class="badge teal">Sliding scale</span>` : ''}
+                        </div>
+                        <div style="display:flex;gap:8px;">
+                          <button class="btn btn-ghost btn-sm" data-save="${p.id}">${saved.has(p.id) ? '✓ Saved' : '+ Save to plan'}</button>
+                          <a class="btn btn-primary btn-sm" href="connection-request.html?provider=${p.id}">Request connection<span class="inner">→</span></a>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+
+              <div class="notice" style="margin-top: 18px;">
+                <span id="info-ico"></span>
+                <div><strong style="color:var(--fg);">A note on these listings.</strong> Names, costs, and availability are simulated for this prototype. In production, listings would refresh from verified provider directories and your insurance plan.</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      `);
+
+      mountAppShell({
+        active: 'provider-matching',
+        title: 'Matched support options',
+        crumbs: ['Care', 'Care route', 'Options'],
+        actions: `<a href="care-packet.html" class="btn btn-primary btn-sm">Open packet<span class="inner">→</span></a>`,
+      });
+
+      renderFilters();
+      bindEvents();
+    }
+
+    function renderFilters() {
+      const renderChips = (key, items) => items.map(c => `
+        <button class="filter-pill ${activeFilters[key] === c.v ? 'active' : ''}" data-filter="${key}" data-value="${c.v}">${c.l}</button>
+      `).join('');
+      document.getElementById('filter-type').innerHTML = renderChips('type', FILTER_CHIPS.type);
+      document.getElementById('filter-modality').innerHTML = renderChips('modality', FILTER_CHIPS.modality);
+      document.getElementById('filter-insurance').innerHTML = renderChips('insurance', FILTER_CHIPS.insurance);
+    }
+
+    function bindEvents() {
+      document.querySelectorAll('[data-filter]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          activeFilters[btn.dataset.filter] = btn.dataset.value;
+          render();
+        });
+      });
+      document.getElementById('sliding-toggle').addEventListener('click', () => {
+        activeFilters.slidingScale = !activeFilters.slidingScale;
+        render();
+      });
+      document.querySelectorAll('[data-save]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.dataset.save;
+          if (saved.has(id)) { saved.delete(id); unsaveProvider(id); toast('Removed from plan'); }
+          else { saved.add(id); saveProvider(id); toast('Saved to plan'); }
+          render();
+        });
+      });
+      MOCK_PROVIDERS.forEach(p => {
+        const el = document.getElementById(`m-${p.id}-ico`);
+        if (el) el.innerHTML = icon('info', 14);
+      });
+      const ii = document.getElementById('info-ico'); if (ii) ii.innerHTML = icon('info', 16);
+    }
+
+    render();
+  </script>
+</body>
+</html>

@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wise Care — Prototype overview</title>
+  <link rel="stylesheet" href="shared/styles.css">
+  <style>
+    .launcher-hero {
+      padding: clamp(56px, 8vw, 100px) 0 clamp(32px, 5vw, 56px);
+      position: relative;
+      overflow: hidden;
+    }
+    .launcher-hero::before {
+      content: '';
+      position: absolute;
+      inset: -20% -10% auto -10%;
+      height: 70%;
+      background:
+        radial-gradient(55% 70% at 20% 30%, oklch(58% 0.085 195 / 0.14), transparent 60%),
+        radial-gradient(48% 60% at 80% 24%, oklch(56% 0.10 240 / 0.10), transparent 60%);
+      filter: blur(6px);
+      pointer-events: none;
+    }
+    .launcher-hero-inner { position: relative; }
+    .meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-top: 32px;
+      padding-top: 24px;
+      border-top: 1px solid var(--hairline);
+    }
+    .meta {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .meta .k { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted-2); }
+    .meta .v { font-size: 14px; font-weight: 500; color: var(--fg); }
+
+    .role-block {
+      margin-top: 40px;
+    }
+    .role-block-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 14px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--hairline);
+    }
+    .role-block-title {
+      display: flex; align-items: baseline; gap: 14px;
+      font-family: var(--font-display);
+      font-size: 1.15rem;
+      font-weight: 600;
+      letter-spacing: -0.012em;
+    }
+    .role-block-title .count {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 0.06em;
+    }
+    .role-block-go {
+      font-size: 12.5px;
+      color: var(--teal-deep);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .screen-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 14px;
+    }
+    .screen-card {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 18px;
+      border: 1px solid var(--hairline);
+      border-radius: var(--r-md);
+      background: var(--surface);
+      transition: all var(--t-fast) var(--spring);
+      position: relative;
+    }
+    .screen-card:hover {
+      border-color: var(--border-2);
+      transform: translateY(-1px);
+      box-shadow: var(--sh-2);
+    }
+    .screen-card .num {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--muted-2);
+      letter-spacing: 0.08em;
+    }
+    .screen-card .title { font-weight: 600; font-size: 14.5px; letter-spacing: -0.008em; color: var(--fg); }
+    .screen-card .blurb { font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+    .screen-card .arrow {
+      position: absolute;
+      top: 18px; right: 16px;
+      color: var(--muted-2);
+      transition: transform var(--t-fast), color var(--t-fast);
+    }
+    .screen-card:hover .arrow { color: var(--teal-deep); transform: translateX(2px); }
+
+    .flow-strip {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      padding: 14px;
+      background: var(--surface-2);
+      border: 1px solid var(--hairline);
+      border-radius: var(--r-md);
+      font-size: 12.5px;
+      color: var(--fg-soft);
+    }
+    .flow-strip a { color: var(--teal-deep); font-weight: 500; }
+    .flow-strip .sep { color: var(--muted-2); }
+
+    .safety-card {
+      margin-top: 20px;
+      padding: 18px 22px;
+      background: var(--teal-soft);
+      border: 1px solid oklch(58% 0.085 195 / 0.22);
+      border-radius: var(--r-md);
+      font-size: 13.5px;
+      color: oklch(30% 0.07 200);
+      display: flex; gap: 14px;
+      line-height: 1.55;
+    }
+    .safety-card .ico { color: var(--teal-deep); flex-shrink: 0; }
+  </style>
+</head>
+<body>
+  <nav class="nav-top">
+    <div class="container">
+      <div class="nav-top-inner">
+        <div class="brand-row">
+          <div class="brand-mark"></div>
+          <div class="brand-word">Wise Care<small>Prototype · v0.1</small></div>
+        </div>
+        <ul>
+          <li><a href="landing.html">Landing</a></li>
+          <li><a href="user-dashboard.html">User</a></li>
+          <li><a href="provider-dashboard.html">Provider</a></li>
+          <li><a href="admin-dashboard.html">Admin</a></li>
+          <li><a href="org-insights.html">Org</a></li>
+        </ul>
+        <a href="landing.html" class="btn btn-primary btn-sm">Start prototype<span class="inner">→</span></a>
+      </div>
+    </div>
+  </nav>
+
+  <header class="launcher-hero">
+    <div class="container launcher-hero-inner">
+      <span class="kicker">Prototype overview · v0.1</span>
+      <h1 class="h1" style="margin: 18px 0 18px; max-width: 22ch;">
+        Wise Care — a calm path to mental health support.
+      </h1>
+      <p class="lede" style="max-width: 60ch;">
+        Sixteen screens across user, provider, admin, and organization sides — designed as a complete digital product, not a chatbot or single intake form. Simulated data only. No diagnoses, no medication advice, no medical claims.
+      </p>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px;">
+        <a href="landing.html" class="btn btn-primary">
+          Open landing
+          <span class="inner">Begin →</span>
+        </a>
+        <a href="intake.html" class="btn btn-ghost">Jump to intake</a>
+        <a href="care-route.html" class="btn btn-ghost">Jump to care route</a>
+        <a href="care-packet.html" class="btn btn-ghost">Jump to care packet</a>
+      </div>
+
+      <div class="meta-row">
+        <div class="meta" style="min-width: 130px;">
+          <span class="k">Screens</span><span class="v num">16 total</span>
+        </div>
+        <div class="meta" style="min-width: 130px;">
+          <span class="k">Roles</span><span class="v">User · Provider · Admin · Org</span>
+        </div>
+        <div class="meta" style="min-width: 130px;">
+          <span class="k">Visual system</span><span class="v">Calm healthcare SaaS</span>
+        </div>
+        <div class="meta" style="min-width: 130px;">
+          <span class="k">Data</span><span class="v">Simulated · No PHI</span>
+        </div>
+        <div class="meta" style="min-width: 130px;">
+          <span class="k">Responsive</span><span class="v">Desktop + Mobile</span>
+        </div>
+      </div>
+
+      <div class="safety-card" style="margin-top: 28px;">
+        <span class="ico" id="safety-ico"></span>
+        <div>
+          <strong style="color: var(--teal-deep); font-weight: 600;">Safety positioning.</strong>
+          Wise Care does not diagnose, provide therapy, or prescribe medication. If someone is in immediate danger or thinking about harming themselves, the product routes them to <strong>988 Suicide &amp; Crisis Lifeline</strong> or local emergency support.
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <section class="section" style="padding-top: 24px;">
+    <div class="container">
+
+      <div class="flow-strip" style="margin-bottom: 8px;">
+        <span class="kicker" style="color: var(--muted);">Primary user flow</span>
+        <a href="landing.html">Landing</a><span class="sep">→</span>
+        <a href="signin.html">Sign in</a><span class="sep">→</span>
+        <a href="user-dashboard.html">Dashboard</a><span class="sep">→</span>
+        <a href="intake.html">Intake</a><span class="sep">→</span>
+        <a href="ai-processing.html">AI review</a><span class="sep">→</span>
+        <a href="care-route.html">Care route</a><span class="sep">→</span>
+        <a href="provider-matching.html">Match</a><span class="sep">→</span>
+        <a href="care-packet.html">Packet</a><span class="sep">→</span>
+        <a href="connection-request.html">Request</a><span class="sep">→</span>
+        <a href="follow-up.html">Follow-up</a>
+      </div>
+
+      <div class="role-block">
+        <div class="role-block-head">
+          <div class="role-block-title">User side <span class="count">10 screens</span></div>
+          <a href="user-dashboard.html" class="role-block-go">Open user dashboard <span id="ga1"></span></a>
+        </div>
+        <div class="screen-grid">
+          <a class="screen-card" href="landing.html"><span class="num">01</span><span class="title">Landing page</span><span class="blurb">Hero, problem, solution, stakeholders, safety positioning.</span><span class="arrow" id="ar1"></span></a>
+          <a class="screen-card" href="signin.html"><span class="num">02</span><span class="title">Sign in / Register</span><span class="blurb">Continue as user, provider, or admin demo.</span><span class="arrow" id="ar2"></span></a>
+          <a class="screen-card" href="user-dashboard.html"><span class="num">03</span><span class="title">User dashboard</span><span class="blurb">Care journey status, next action, saved packet.</span><span class="arrow" id="ar3"></span></a>
+          <a class="screen-card" href="intake.html"><span class="num">04</span><span class="title">Private intake</span><span class="blurb">Multi-step structured form. Not a chatbot.</span><span class="arrow" id="ar4"></span></a>
+          <a class="screen-card" href="ai-processing.html"><span class="num">05</span><span class="title">AI agent review</span><span class="blurb">Intake · Safety · Care route · Matching · Packet.</span><span class="arrow" id="ar5"></span></a>
+          <a class="screen-card" href="care-route.html"><span class="num">06</span><span class="title">Care route results</span><span class="blurb">Urgency, recommended path, reasoning, barriers.</span><span class="arrow" id="ar6"></span></a>
+          <a class="screen-card" href="provider-matching.html"><span class="num">07</span><span class="title">Provider matching</span><span class="blurb">Filters + provider and resource match cards.</span><span class="arrow" id="ar7"></span></a>
+          <a class="screen-card" href="care-packet.html"><span class="num">08</span><span class="title">Care packet</span><span class="blurb">Provider-ready summary. Copy · download · share.</span><span class="arrow" id="ar8"></span></a>
+          <a class="screen-card" href="connection-request.html"><span class="num">09</span><span class="title">Connection request</span><span class="blurb">Consent, preview, send, confirmation state.</span><span class="arrow" id="ar9"></span></a>
+          <a class="screen-card" href="follow-up.html"><span class="num">10</span><span class="title">Follow-up check-in</span><span class="blurb">Did you contact? Suggested next action if blocked.</span><span class="arrow" id="ar10"></span></a>
+        </div>
+      </div>
+
+      <div class="role-block">
+        <div class="role-block-head">
+          <div class="role-block-title">Provider side <span class="count">3 screens</span></div>
+          <a href="provider-dashboard.html" class="role-block-go">Open provider dashboard <span id="ga2"></span></a>
+        </div>
+        <div class="screen-grid">
+          <a class="screen-card" href="provider-register.html"><span class="num">11</span><span class="title">Provider registration</span><span class="blurb">License, state, specialty, insurance, availability.</span><span class="arrow" id="ar11"></span></a>
+          <a class="screen-card" href="provider-dashboard.html"><span class="num">12</span><span class="title">Provider dashboard</span><span class="blurb">Profile, availability, referral inbox preview.</span><span class="arrow" id="ar12"></span></a>
+          <a class="screen-card" href="provider-inbox.html"><span class="num">13</span><span class="title">Referral inbox</span><span class="blurb">Risk label, care route type, accept / waitlist / decline.</span><span class="arrow" id="ar13"></span></a>
+        </div>
+      </div>
+
+      <div class="role-block">
+        <div class="role-block-head">
+          <div class="role-block-title">Admin side <span class="count">2 screens</span></div>
+          <a href="admin-dashboard.html" class="role-block-go">Open admin dashboard <span id="ga3"></span></a>
+        </div>
+        <div class="screen-grid">
+          <a class="screen-card" href="admin-dashboard.html"><span class="num">14</span><span class="title">Admin dashboard</span><span class="blurb">Verification queue, routing monitor, barrier signals.</span><span class="arrow" id="ar14"></span></a>
+          <a class="screen-card" href="admin-verify.html"><span class="num">15</span><span class="title">Provider verification</span><span class="blurb">Approve, request more info, or reject onboarding.</span><span class="arrow" id="ar15"></span></a>
+        </div>
+      </div>
+
+      <div class="role-block">
+        <div class="role-block-head">
+          <div class="role-block-title">Organization side <span class="count">1 screen</span></div>
+          <a href="org-insights.html" class="role-block-go">Open organization insights <span id="ga4"></span></a>
+        </div>
+        <div class="screen-grid">
+          <a class="screen-card" href="org-insights.html"><span class="num">16</span><span class="title">Organization insights</span><span class="blurb">Anonymous trends. No personal health information.</span><span class="arrow" id="ar16"></span></a>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <footer class="foot">
+    <div class="container">
+      <div class="foot-grid">
+        <div>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom: 12px;">
+            <div class="brand-mark"></div>
+            <div class="brand-word">Wise Care<small>Care Navigation Platform</small></div>
+          </div>
+          <p style="font-size: 13px; color: var(--muted); max-width: 36ch; line-height: 1.6; margin: 0;">
+            A prototype for evaluating care navigation experiences. Not a clinical service. Simulated data only.
+          </p>
+        </div>
+        <div>
+          <h5>Product</h5>
+          <ul>
+            <li><a href="landing.html">Overview</a></li>
+            <li><a href="intake.html">Care navigation</a></li>
+            <li><a href="provider-matching.html">Support options</a></li>
+            <li><a href="care-packet.html">Care packet</a></li>
+          </ul>
+        </div>
+        <div>
+          <h5>For stakeholders</h5>
+          <ul>
+            <li><a href="provider-dashboard.html">Providers</a></li>
+            <li><a href="org-insights.html">Employers</a></li>
+            <li><a href="org-insights.html">Universities</a></li>
+            <li><a href="org-insights.html">Insurers</a></li>
+          </ul>
+        </div>
+        <div>
+          <h5>Safety</h5>
+          <ul>
+            <li><a href="#">Responsible use</a></li>
+            <li><a href="#">Crisis support · 988</a></li>
+            <li><a href="#">Privacy</a></li>
+            <li><a href="#">What we are not</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="foot-bottom">
+        <span>© Wise Care — prototype only · simulated data · v0.1</span>
+        <span class="mono">Not a clinical service. If in immediate danger, call 988 or 911.</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="shared/app.js"></script>
+  <script>
+    document.getElementById('safety-ico').innerHTML = icon('shield', 22);
+    ['ga1','ga2','ga3','ga4'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = icon('arrow', 12);
+    });
+    for (let i = 1; i <= 16; i++) {
+      const el = document.getElementById('ar' + i);
+      if (el) el.innerHTML = icon('arrow', 14);
+    }
+  </script>
+</body>
+</html>
