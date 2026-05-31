@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/auth/AuthProvider';
+import { firestoreHelpers } from '@/lib/firebase/firestore';
 import { Heart, Users, Shield, Building, ArrowRight, Loader2 } from 'lucide-react';
 import Notice from '@/components/ui/Notice';
 
@@ -51,17 +52,35 @@ export default function SignInPage() {
     setError(null);
     try {
       const res = await signIn(demoEmail, 'demo-prototype');
-      const role = res.user?.email?.split('.')[0] || 'patient';
-      const target = 
-        role === 'patient' 
-          ? '/dashboard' 
-          : role === 'clinic' 
-            ? '/provider/org/dashboard' 
-            : role === 'clinician' 
-              ? '/provider/solo/dashboard' 
-              : role === 'admin' 
-                ? '/admin/dashboard' 
-                : '/dashboard';
+      
+      let target = '/dashboard';
+      if (isFirebaseMode && res.user) {
+        const profile = await firestoreHelpers.getUserProfile(res.user.uid);
+        const role = profile?.role;
+        const userEmail = res.user.email || '';
+        
+        if (role === 'provider_org' || userEmail.startsWith('clinic')) {
+          target = '/provider/org/dashboard';
+        } else if (role === 'solo_provider' || userEmail.startsWith('clinician') || userEmail.startsWith('doc')) {
+          target = '/provider/solo/dashboard';
+        } else if (role === 'admin' || userEmail.startsWith('admin')) {
+          target = '/admin/dashboard';
+        } else {
+          target = '/dashboard';
+        }
+      } else {
+        const role = res.user?.email?.split('.')[0] || 'patient';
+        target = 
+          role === 'patient' 
+            ? '/dashboard' 
+            : role === 'clinic' 
+              ? '/provider/org/dashboard' 
+              : role === 'clinician' 
+                ? '/provider/solo/dashboard' 
+                : role === 'admin' 
+                  ? '/admin/dashboard' 
+                  : '/dashboard';
+      }
       router.push(target);
     } catch (err: any) {
       setError(err.message || 'Failed to sign in. If using Firebase, please make sure this account exists.');
@@ -89,11 +108,29 @@ export default function SignInPage() {
     setError(null);
     try {
       const res = await signIn(email, password);
-      const userEmail = res.user?.email || '';
+      
       let target = '/dashboard';
-      if (userEmail.startsWith('clinic')) target = '/provider/org/dashboard';
-      else if (userEmail.startsWith('clinician')) target = '/provider/solo/dashboard';
-      else if (userEmail.startsWith('admin')) target = '/admin/dashboard';
+      if (isFirebaseMode && res.user) {
+        const profile = await firestoreHelpers.getUserProfile(res.user.uid);
+        const role = profile?.role;
+        const userEmail = res.user.email || '';
+        
+        if (role === 'provider_org' || userEmail.startsWith('clinic')) {
+          target = '/provider/org/dashboard';
+        } else if (role === 'solo_provider' || userEmail.startsWith('clinician') || userEmail.startsWith('doc')) {
+          target = '/provider/solo/dashboard';
+        } else if (role === 'admin' || userEmail.startsWith('admin')) {
+          target = '/admin/dashboard';
+        } else {
+          target = '/dashboard';
+        }
+      } else {
+        const userEmail = res.user?.email || '';
+        if (userEmail.startsWith('clinic')) target = '/provider/org/dashboard';
+        else if (userEmail.startsWith('clinician')) target = '/provider/solo/dashboard';
+        else if (userEmail.startsWith('admin')) target = '/admin/dashboard';
+      }
+      
       router.push(target);
     } catch (err: any) {
       setError(err.message || 'Invalid email or password.');

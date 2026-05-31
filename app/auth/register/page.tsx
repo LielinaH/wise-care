@@ -41,12 +41,25 @@ export default function RegisterPage() {
       const res = await register(email, password);
       
       if (isFirebaseMode && res.user) {
+        // Automatically determine role from email domain/prefix for ease of dev testing
+        let assignedRole: 'patient' | 'provider_org' | 'solo_provider' | 'admin' = role;
+        const lowerEmail = email.toLowerCase().trim();
+        if (lowerEmail.startsWith('admin') || lowerEmail === 'admin@admin.com') {
+          assignedRole = 'admin';
+        } else if (lowerEmail.startsWith('user') || lowerEmail === 'user@user.com') {
+          assignedRole = 'patient';
+        } else if (lowerEmail.startsWith('doc') || lowerEmail.startsWith('clinician') || lowerEmail === 'doc@doc.com') {
+          assignedRole = 'solo_provider';
+        } else if (lowerEmail.startsWith('clinic') || lowerEmail === 'clinic@clinic.com') {
+          assignedRole = 'provider_org';
+        }
+
         // Create the core users/{uid} document
         await firestoreHelpers.setUserProfile(res.user.uid, {
           uid: res.user.uid,
           email: email.toLowerCase().trim(),
           displayName: email.split('@')[0],
-          role: role,
+          role: assignedRole,
           onboardingComplete: false,
         });
       }
