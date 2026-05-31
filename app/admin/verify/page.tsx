@@ -334,7 +334,7 @@ function AdminVerifyContent() {
                           <Check className="w-3.5 h-3.5 text-white" />
                         </div>
                         <div className="body">
-                          <strong>{t}</strong>
+                          <strong>{t}</strong>{' '}
                           <span>{d}</span>
                         </div>
                       </div>

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { firestoreHelpers } from '@/lib/firebase/firestore';
+import { getFriendlyAuthErrorMessage } from '@/lib/firebase/auth';
 import { Heart, Users, Building, ArrowRight, Loader2 } from 'lucide-react';
 
 export default function RegisterPage() {
@@ -27,7 +28,7 @@ export default function RegisterPage() {
       // intercept and send new users without a role to /auth/onboarding
       router.push('/dashboard');
     } catch (err: any) {
-      setError(err.message || 'Failed to sign up with Google.');
+      setError(getFriendlyAuthErrorMessage(err));
       setLoading(false);
     }
   };
@@ -67,7 +68,7 @@ export default function RegisterPage() {
       // Proceed to onboarding wizard
       router.push('/auth/onboarding');
     } catch (err: any) {
-      setError(err.message || 'Registration failed. Please make sure Firebase is configured.');
+      setError(getFriendlyAuthErrorMessage(err));
       setLoading(false);
     }
   };

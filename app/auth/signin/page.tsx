@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { firestoreHelpers } from '@/lib/firebase/firestore';
+import { getFriendlyAuthErrorMessage } from '@/lib/firebase/auth';
 import { Heart, Users, Shield, Building, ArrowRight, Loader2 } from 'lucide-react';
 import Notice from '@/components/ui/Notice';
 
@@ -25,7 +26,7 @@ export default function SignInPage() {
       // intercept and send new users without a role to /auth/onboarding
       router.push('/dashboard');
     } catch (err: any) {
-      setError(err.message || 'Failed to sign in with Google.');
+      setError(getFriendlyAuthErrorMessage(err));
       setLoading(false);
     }
   };
@@ -61,7 +62,7 @@ export default function SignInPage() {
       
       router.push(target);
     } catch (err: any) {
-      setError(err.message || 'Invalid email or password.');
+      setError(getFriendlyAuthErrorMessage(err));
       setLoading(false);
     }
   };
