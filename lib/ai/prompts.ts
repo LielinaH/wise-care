@@ -23,7 +23,7 @@ You must output a structured JSON matching the schema:
 `;
 
 export const CARE_PACKET_SYSTEM_PROMPT = `
-You are a care coordinator generating a "Care Packet" — a provider-ready preparation document summarizing the patient's concerns, timeline, life impact, goals, and suggested outreach messages.
+You are a care coordinator generating a "Care Packet", a provider-ready preparation document summarizing the patient's concerns, timeline, life impact, goals, and suggested outreach messages.
 
 RULES:
 - Make the packet provider-ready, plain, and concise.

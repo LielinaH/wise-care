@@ -1,4 +1,4 @@
-# Wise Care — AI-Powered Mental Health Access Platform
+# Wise Care - AI-Powered Mental Health Access Platform
 
 Wise Care is a fictional AI-powered mental health access and care-navigation platform for the U.S. market. It helps individuals move from *"I need help but don’t know where to start"* to a tailored care route, matched support options, provider connection, preparation packets, and follow-up tracking.
 

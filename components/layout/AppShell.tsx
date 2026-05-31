@@ -83,14 +83,7 @@ export default function AppShell({ children, title, crumbs = [], actions }: AppS
         items: [
           { id: 'admin-dashboard', label: 'Dashboard', href: '/admin/dashboard', icon: Home },
           { id: 'admin-verify', label: 'Provider verification', href: '/admin/verify', icon: ShieldCheck, pill: '3' },
-        ],
-      },
-    ],
-    org: [
-      {
-        label: 'Insights',
-        items: [
-          { id: 'org-insights', label: 'Anonymous trends', href: '/organization/insights', icon: BarChart3 },
+          { id: 'org-insights', label: 'Organization insights', href: '/organization/insights', icon: BarChart3 },
         ],
       },
     ],

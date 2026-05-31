@@ -1,0 +1,622 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wise Care — Find the right path to mental health support</title>
+  <link rel="stylesheet" href="shared/styles.css">
+  <style>
+    .hero h1 {
+      font-size: clamp(2.4rem, 5.2vw, 4.1rem);
+      font-weight: 600;
+      letter-spacing: -0.032em;
+      line-height: 1.02;
+      color: var(--fg);
+      margin: 18px 0 22px;
+      text-wrap: balance;
+    }
+    .hero-bullets {
+      display: flex; flex-wrap: wrap; gap: 24px;
+      margin-top: 32px;
+      padding-top: 24px;
+      border-top: 1px solid var(--hairline);
+    }
+    .hero-bullet { display: flex; gap: 10px; align-items: flex-start; max-width: 28ch; }
+    .hero-bullet .num {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      background: var(--teal-soft);
+      color: var(--teal-deep);
+      display: grid; place-items: center;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+    .hero-bullet .t { font-size: 13.5px; color: var(--fg-soft); line-height: 1.5; }
+    .hero-bullet .t strong { color: var(--fg); font-weight: 600; display: block; margin-bottom: 2px; font-size: 14px; }
+
+    /* Hero visual */
+    .hero-visual {
+      position: relative;
+      aspect-ratio: 5 / 4.4;
+      border-radius: var(--r-2xl);
+      background:
+        linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
+      border: 1px solid var(--hairline);
+      box-shadow: var(--sh-3);
+      padding: 28px;
+      overflow: hidden;
+    }
+    .hero-visual::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(60% 60% at 20% 0%, oklch(58% 0.085 195 / 0.10), transparent 60%),
+        radial-gradient(50% 50% at 100% 100%, oklch(56% 0.10 240 / 0.07), transparent 60%);
+      pointer-events: none;
+    }
+    .hero-card-row {
+      position: relative;
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    .path-card {
+      background: var(--surface);
+      border: 1px solid var(--hairline);
+      border-radius: var(--r-md);
+      padding: 14px 16px;
+      box-shadow: var(--sh-1);
+      display: flex; align-items: center; gap: 14px;
+      position: relative;
+    }
+    .path-card .step-dot {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: var(--surface-sunk);
+      color: var(--muted);
+      display: grid; place-items: center;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+    .path-card.done .step-dot { background: var(--success-soft); color: oklch(38% 0.11 158); }
+    .path-card.active {
+      border-color: oklch(58% 0.085 195 / 0.4);
+      box-shadow: var(--sh-2), 0 0 0 3px oklch(58% 0.085 195 / 0.10);
+    }
+    .path-card.active .step-dot {
+      background: linear-gradient(180deg, var(--teal), var(--teal-deep));
+      color: white;
+      box-shadow: 0 0 0 0 oklch(58% 0.085 195 / 0.32);
+      animation: pulse-ring 2.4s var(--spring) infinite;
+    }
+    .path-card .lbl { font-size: 13.5px; font-weight: 500; color: var(--fg); }
+    .path-card .sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
+    .path-card .meta { margin-left: auto; font-family: var(--font-mono); font-size: 10.5px; color: var(--muted-2); letter-spacing: 0.06em; }
+    .path-conn {
+      position: absolute; left: 41px; top: 100%; height: 12px; width: 1px;
+      background: var(--border);
+    }
+
+    /* Problem grid */
+    .problem-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 18px;
+    }
+    @media (max-width: 900px) { .problem-grid { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 560px) { .problem-grid { grid-template-columns: 1fr; } }
+    .problem-card {
+      padding: 22px;
+      border: 1px solid var(--hairline);
+      border-radius: var(--r-md);
+      background: var(--surface);
+    }
+    .problem-card .word {
+      font-family: var(--font-display);
+      font-size: 1.3rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin: 12px 0 6px;
+    }
+    .problem-card .desc { font-size: 13.5px; color: var(--muted); line-height: 1.55; }
+    .problem-card .ico {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      background: var(--surface-sunk);
+      color: var(--fg-soft);
+      display: grid; place-items: center;
+    }
+
+    /* Solution flow */
+    .solution-flow {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 0;
+      margin-top: 32px;
+      position: relative;
+    }
+    @media (max-width: 1000px) { .solution-flow { grid-template-columns: 1fr 1fr; } }
+    .sol-step {
+      padding: 22px;
+      border: 1px solid var(--hairline);
+      background: var(--surface);
+      position: relative;
+    }
+    .sol-step:not(:last-child) { border-right: 0; }
+    .sol-step:first-child { border-radius: var(--r-md) 0 0 var(--r-md); }
+    .sol-step:last-child { border-radius: 0 var(--r-md) var(--r-md) 0; }
+    @media (max-width: 1000px) {
+      .sol-step { border-right: 1px solid var(--hairline); border-bottom: 0; }
+      .sol-step:nth-child(odd) { border-radius: 0; }
+      .sol-step:first-child { border-radius: var(--r-md) var(--r-md) 0 0; }
+      .sol-step:last-child { border-radius: 0 0 var(--r-md) var(--r-md); grid-column: 1 / -1; }
+    }
+    .sol-step .step-num {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--teal-deep);
+      letter-spacing: 0.08em;
+    }
+    .sol-step .step-t { font-weight: 600; font-size: 14.5px; margin: 8px 0 6px; letter-spacing: -0.008em; }
+    .sol-step .step-d { font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+
+    /* Stakeholder grid */
+    .stake-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 14px;
+    }
+    @media (max-width: 1100px) { .stake-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 600px) { .stake-grid { grid-template-columns: 1fr 1fr; } }
+    .stake-card {
+      padding: 22px;
+      border: 1px solid var(--hairline);
+      background: var(--surface);
+      border-radius: var(--r-md);
+      transition: all var(--t-fast) var(--spring);
+    }
+    .stake-card:hover { border-color: var(--border-2); transform: translateY(-1px); box-shadow: var(--sh-2); }
+    .stake-card .ico {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      background: var(--teal-soft);
+      color: var(--teal-deep);
+      display: grid; place-items: center;
+    }
+    .stake-card .t { font-weight: 600; font-size: 14.5px; margin-top: 14px; }
+    .stake-card .d { font-size: 12.5px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+
+    .safety-section {
+      background: var(--bg-tint);
+      border-radius: var(--r-xl);
+      padding: clamp(36px, 6vw, 56px);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
+      align-items: start;
+    }
+    @media (max-width: 800px) { .safety-section { grid-template-columns: 1fr; gap: 28px; } }
+    .safety-pillars { display: flex; flex-direction: column; gap: 14px; }
+    .pillar {
+      display: flex; gap: 14px;
+      padding: 18px;
+      background: var(--surface);
+      border: 1px solid var(--hairline);
+      border-radius: var(--r-md);
+    }
+    .pillar .ico {
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      background: var(--teal-soft);
+      color: var(--teal-deep);
+      display: grid; place-items: center;
+      flex-shrink: 0;
+    }
+    .pillar .t { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+    .pillar .d { font-size: 12.5px; color: var(--muted); line-height: 1.55; }
+
+    .cta-band {
+      margin: clamp(48px, 7vw, 80px) 0;
+      padding: clamp(48px, 7vw, 80px);
+      background:
+        radial-gradient(70% 100% at 30% 100%, oklch(58% 0.085 195 / 0.14), transparent 60%),
+        radial-gradient(60% 100% at 100% 0%, oklch(56% 0.10 240 / 0.10), transparent 60%),
+        linear-gradient(180deg, oklch(98% 0.005 230), var(--surface));
+      border: 1px solid var(--hairline);
+      border-radius: var(--r-2xl);
+      text-align: center;
+      box-shadow: var(--sh-2);
+    }
+    .cta-band h2 {
+      font-family: var(--font-display);
+      font-size: clamp(1.8rem, 3.4vw, 2.6rem);
+      font-weight: 600;
+      letter-spacing: -0.028em;
+      line-height: 1.1;
+      margin: 0 0 14px;
+      max-width: 22ch;
+      margin-inline: auto;
+    }
+    .cta-band p { color: var(--fg-soft); max-width: 50ch; margin: 0 auto 28px; }
+  </style>
+</head>
+<body>
+
+  <nav class="nav-top">
+    <div class="container">
+      <div class="nav-top-inner">
+        <a class="brand-row" href="index.html" style="cursor: pointer;">
+          <div class="brand-mark"></div>
+          <div class="brand-word">Wise Care<small>Care Navigation</small></div>
+        </a>
+        <ul>
+          <li><a href="#how">How it works</a></li>
+          <li><a href="#who">Who it's for</a></li>
+          <li><a href="#safety">Safety</a></li>
+          <li><a href="signin.html">Sign in</a></li>
+        </ul>
+        <a href="signin.html" class="btn btn-primary btn-sm">
+          Start care navigation
+          <span class="inner">→</span>
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div class="container">
+      <div class="hero-grid">
+        <div class="enter">
+          <span class="kicker">AI-powered mental health access</span>
+          <h1>Find the right path to mental health support.</h1>
+          <p class="lede" style="max-width: 48ch;">
+            Wise Care helps people understand their needs, prepare for care, and connect with the right support faster — without guessing, without dozens of cold calls, and without doing it alone.
+          </p>
+
+          <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px;">
+            <a href="signin.html" class="btn btn-primary btn-lg">
+              Start care navigation
+              <span class="inner">Begin →</span>
+            </a>
+            <a href="#how" class="btn btn-ghost btn-lg">Explore how it works</a>
+          </div>
+
+          <div class="hero-bullets">
+            <div class="hero-bullet">
+              <span class="num">1</span>
+              <div class="t"><strong>Private intake</strong>A structured form, never a chatbot. Takes about six minutes.</div>
+            </div>
+            <div class="hero-bullet">
+              <span class="num">2</span>
+              <div class="t"><strong>A clear care route</strong>Recommended next steps based on your situation, urgency, and access barriers.</div>
+            </div>
+            <div class="hero-bullet">
+              <span class="num">3</span>
+              <div class="t"><strong>Provider-ready packet</strong>A short summary to share with a clinician — so your first visit isn't lost in paperwork.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="enter" style="animation-delay: 200ms;">
+          <div class="hero-visual">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px;">
+              <span class="kicker" style="color: var(--muted);">Care route · live preview</span>
+              <span class="badge teal"><span class="dot"></span>In progress</span>
+            </div>
+            <div class="hero-card-row">
+              <div class="path-card done">
+                <span class="step-dot" id="hd1"></span>
+                <div>
+                  <div class="lbl">Private intake completed</div>
+                  <div class="sub">10 questions · 6 min</div>
+                </div>
+                <span class="meta">Step 1</span>
+                <span class="path-conn"></span>
+              </div>
+              <div class="path-card done">
+                <span class="step-dot" id="hd2"></span>
+                <div>
+                  <div class="lbl">Safety check passed</div>
+                  <div class="sub">No immediate risk indicators</div>
+                </div>
+                <span class="meta">Step 2</span>
+                <span class="path-conn"></span>
+              </div>
+              <div class="path-card active">
+                <span class="step-dot">3</span>
+                <div>
+                  <div class="lbl">Care route ready</div>
+                  <div class="sub">Therapy · sleep + anxiety focus</div>
+                </div>
+                <span class="meta">Now</span>
+                <span class="path-conn"></span>
+              </div>
+              <div class="path-card">
+                <span class="step-dot">4</span>
+                <div>
+                  <div class="lbl">Review matched options</div>
+                  <div class="sub">3 providers · 1 community clinic · 1 group</div>
+                </div>
+                <span class="meta">Next</span>
+                <span class="path-conn"></span>
+              </div>
+              <div class="path-card">
+                <span class="step-dot">5</span>
+                <div>
+                  <div class="lbl">Send connection request</div>
+                  <div class="sub">Care Packet · with your consent</div>
+                </div>
+                <span class="meta">After</span>
+              </div>
+            </div>
+            <div style="margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--hairline); display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-family: var(--font-mono); font-size: 11px; color: var(--muted); letter-spacing: 0.05em;">SAMPLE PREVIEW — SIMULATED DATA</span>
+              <span style="font-size: 12px; color: var(--teal-deep); font-weight: 500;">View full route →</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <section id="how" class="section">
+    <div class="container">
+      <div class="section-head">
+        <span class="kicker">The problem</span>
+        <h2 class="h2" style="margin: 14px 0 12px;">Mental health care is hard to navigate before you even start.</h2>
+        <p class="lede">Most people don't need more information. They need an answer to a simpler question: <em>what's the right first step for me, given my situation, my coverage, and how I'm feeling right now?</em></p>
+      </div>
+
+      <div class="problem-grid">
+        <div class="problem-card">
+          <div class="ico" id="prob1"></div>
+          <div class="word">Confusing</div>
+          <div class="desc">Therapy. Psychiatry. Group. Community clinic. EAP. Self-guided. The labels don't tell you which one fits.</div>
+        </div>
+        <div class="problem-card">
+          <div class="ico" id="prob2"></div>
+          <div class="word">Expensive</div>
+          <div class="desc">Insurance coverage is uncertain. Out-of-pocket costs vary wildly. Many people wait until they cannot anymore.</div>
+        </div>
+        <div class="problem-card">
+          <div class="ico" id="prob3"></div>
+          <div class="word">Fragmented</div>
+          <div class="desc">Directories are out of date. Providers don't return calls. The first appointment is weeks away — if it happens.</div>
+        </div>
+        <div class="problem-card">
+          <div class="ico" id="prob4"></div>
+          <div class="word">Slow</div>
+          <div class="desc">A first visit can take a month. By then the reason for the visit may already feel different, worse, or unclear.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section tint">
+    <div class="container">
+      <div class="section-head">
+        <span class="kicker">How Wise Care works</span>
+        <h2 class="h2" style="margin: 14px 0 12px;">Five quiet steps from "I need help" to a first appointment.</h2>
+        <p class="lede">No chatbot. No diagnoses. Specialized AI agents structure your situation, check for safety, recommend a path, surface options that fit, and prepare a short summary you can share with whoever you choose.</p>
+      </div>
+
+      <div class="solution-flow">
+        <div class="sol-step">
+          <div class="step-num">01 · INTAKE</div>
+          <div class="step-t">AI-guided intake</div>
+          <div class="step-d">A structured form, not a conversation. Captures what's going on, for how long, and how it's affecting daily life.</div>
+        </div>
+        <div class="sol-step">
+          <div class="step-num">02 · SAFETY</div>
+          <div class="step-t">Safety check</div>
+          <div class="step-d">Looks for indicators of acute risk. If anything is flagged, routes immediately to crisis support — not a waitlist.</div>
+        </div>
+        <div class="sol-step">
+          <div class="step-num">03 · ROUTE</div>
+          <div class="step-t">Care route</div>
+          <div class="step-d">Suggests a path: therapy, psychiatry, community clinic, support group, or self-guided support while waiting.</div>
+        </div>
+        <div class="sol-step">
+          <div class="step-num">04 · MATCH</div>
+          <div class="step-t">Provider matching</div>
+          <div class="step-d">Filters real-world barriers — insurance, location, availability, sliding scale — and surfaces options that actually fit.</div>
+        </div>
+        <div class="sol-step">
+          <div class="step-num">05 · PACKET</div>
+          <div class="step-t">Care Packet</div>
+          <div class="step-d">A short, provider-ready summary you can share with consent — so the first appointment starts past intake paperwork.</div>
+        </div>
+      </div>
+
+      <div class="notice brand" style="margin-top: 28px; max-width: 760px;">
+        <span class="ico" id="brandico"></span>
+        <div>
+          <strong style="color: var(--teal-deep);">What Wise Care is not.</strong>
+          We do not diagnose, treat, or prescribe. We don't replace licensed clinicians. We help people get to the right person, faster, with less guessing.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="who" class="section">
+    <div class="container">
+      <div class="section-head">
+        <span class="kicker">Built for</span>
+        <h2 class="h2" style="margin: 14px 0 12px;">A platform with sides for everyone who supports the journey.</h2>
+        <p class="lede">Care navigation works because every stakeholder has the right view — and never sees what they shouldn't.</p>
+      </div>
+
+      <div class="stake-grid">
+        <div class="stake-card">
+          <div class="ico" id="sh1"></div>
+          <div class="t">Individuals</div>
+          <div class="d">A calm intake, a clear path, and a packet to bring to a first appointment.</div>
+        </div>
+        <div class="stake-card">
+          <div class="ico" id="sh2"></div>
+          <div class="t">Providers</div>
+          <div class="d">Referrals arrive with context already structured — and only what the user agreed to share.</div>
+        </div>
+        <div class="stake-card">
+          <div class="ico" id="sh3"></div>
+          <div class="t">Employers</div>
+          <div class="d">Anonymous trends only. Where employees get stuck, never who or with what.</div>
+        </div>
+        <div class="stake-card">
+          <div class="ico" id="sh4"></div>
+          <div class="t">Universities</div>
+          <div class="d">Student support demand and routing data — without any individual health information.</div>
+        </div>
+        <div class="stake-card">
+          <div class="ico" id="sh5"></div>
+          <div class="t">Insurers</div>
+          <div class="d">Operational signals on access barriers — coverage gaps, wait times, completion rates.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="safety" class="section">
+    <div class="container">
+      <div class="safety-section">
+        <div>
+          <span class="kicker">Safety &amp; responsibility</span>
+          <h2 class="h2" style="margin: 14px 0 14px;">Built with the seriousness this work demands.</h2>
+          <p class="lede">Wise Care is for navigation, not treatment. We are explicit about what we do — and what we will never do — because the people who reach us deserve clarity, not hype.</p>
+
+          <div class="notice danger" style="margin-top: 22px;">
+            <span class="ico" id="dangerico"></span>
+            <div>
+              <strong>If you may be in immediate danger or thinking about harming yourself, please reach out now.</strong><br>
+              <span class="mono" style="font-size: 12.5px;">988 Suicide &amp; Crisis Lifeline · call or text 988</span><br>
+              <span class="mono" style="font-size: 12.5px;">Emergency · 911</span>
+            </div>
+          </div>
+        </div>
+        <div class="safety-pillars">
+          <div class="pillar">
+            <div class="ico" id="sp1"></div>
+            <div>
+              <div class="t">No diagnoses, no prescriptions</div>
+              <div class="d">Wise Care does not act as a clinician. We support navigation, preparation, and connection.</div>
+            </div>
+          </div>
+          <div class="pillar">
+            <div class="ico" id="sp2"></div>
+            <div>
+              <div class="t">Safety routing is non-negotiable</div>
+              <div class="d">If intake indicates immediate risk, the product surfaces crisis support before anything else.</div>
+            </div>
+          </div>
+          <div class="pillar">
+            <div class="ico" id="sp3"></div>
+            <div>
+              <div class="t">Consent before sharing</div>
+              <div class="d">Providers see only what the user chose to share. Organizations see only anonymous trends.</div>
+            </div>
+          </div>
+          <div class="pillar">
+            <div class="ico" id="sp4"></div>
+            <div>
+              <div class="t">No medical claims</div>
+              <div class="d">We don't promise outcomes. We promise a clearer first step than searching alone.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="container">
+      <div class="cta-band">
+        <h2>A clearer first step takes about six minutes.</h2>
+        <p>Begin the private intake, see your suggested care route, and decide what — if anything — to do next.</p>
+        <a href="signin.html" class="btn btn-primary btn-lg">
+          Start care navigation
+          <span class="inner">→ Begin</span>
+        </a>
+        <div style="margin-top: 16px; font-size: 12px; color: var(--muted);">
+          Simulated data in this prototype · No personal health information stored
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <div class="container">
+      <div class="foot-grid">
+        <div>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom: 12px;">
+            <div class="brand-mark"></div>
+            <div class="brand-word">Wise Care<small>Care Navigation Platform</small></div>
+          </div>
+          <p style="font-size: 13px; color: var(--muted); max-width: 36ch; line-height: 1.6; margin: 0;">
+            A care navigation prototype. Not a clinical service. We help people get to the right person, faster.
+          </p>
+        </div>
+        <div>
+          <h5>Product</h5>
+          <ul>
+            <li><a href="#how">How it works</a></li>
+            <li><a href="intake.html">Care navigation</a></li>
+            <li><a href="provider-matching.html">Support options</a></li>
+            <li><a href="care-packet.html">Care packet</a></li>
+            <li><a href="follow-up.html">Follow-up</a></li>
+          </ul>
+        </div>
+        <div>
+          <h5>Stakeholders</h5>
+          <ul>
+            <li><a href="provider-dashboard.html">Providers</a></li>
+            <li><a href="org-insights.html">Employers</a></li>
+            <li><a href="org-insights.html">Universities</a></li>
+            <li><a href="org-insights.html">Insurers</a></li>
+            <li><a href="admin-dashboard.html">Operations</a></li>
+          </ul>
+        </div>
+        <div>
+          <h5>Safety</h5>
+          <ul>
+            <li><a href="#safety">Responsible use</a></li>
+            <li><a href="#safety">Crisis support · 988</a></li>
+            <li><a href="#safety">Privacy &amp; consent</a></li>
+            <li><a href="#safety">What we are not</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="foot-bottom">
+        <span>© Wise Care — prototype only · simulated data · v0.1</span>
+        <span class="mono">Not a clinical service. If in immediate danger, call 988 or 911.</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="shared/app.js"></script>
+  <script>
+    // Hero step-done check icons
+    document.getElementById('hd1').innerHTML = icon('check', 14);
+    document.getElementById('hd2').innerHTML = icon('check', 14);
+    // Problem icons
+    document.getElementById('prob1').innerHTML = icon('compass', 20);
+    document.getElementById('prob2').innerHTML = icon('chart', 20);
+    document.getElementById('prob3').innerHTML = icon('match', 20);
+    document.getElementById('prob4').innerHTML = icon('bolt', 20);
+    // Solution / safety / stakeholder icons
+    document.getElementById('brandico').innerHTML = icon('info', 16);
+    document.getElementById('dangerico').innerHTML = icon('alert', 18);
+    document.getElementById('sh1').innerHTML = icon('heart', 18);
+    document.getElementById('sh2').innerHTML = icon('users', 18);
+    document.getElementById('sh3').innerHTML = icon('building', 18);
+    document.getElementById('sh4').innerHTML = icon('building', 18);
+    document.getElementById('sh5').innerHTML = icon('shield', 18);
+    document.getElementById('sp1').innerHTML = icon('info', 16);
+    document.getElementById('sp2').innerHTML = icon('alert', 16);
+    document.getElementById('sp3').innerHTML = icon('lock', 16);
+    document.getElementById('sp4').innerHTML = icon('shield', 16);
+  </script>
+</body>
+</html>

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
-import { Check, AlertTriangle } from 'lucide-react';
+import { Check, AlertTriangle, ArrowRight } from 'lucide-react';
 import { storage } from '@/lib/storage';
 import AppShell from '@/components/layout/AppShell';
 import Notice from '@/components/ui/Notice';
@@ -178,11 +178,11 @@ export default function IntakePage() {
   const isCrisis = watchedSafety === 'immediate';
 
   const intensityLabel = (v: number) => {
-    if (v <= 2) return 'Mild — manageable most days';
+    if (v <= 2) return 'Mild: manageable most days';
     if (v <= 4) return 'Noticeable but not overwhelming';
     if (v <= 6) return 'Distracting, affecting some daily life';
     if (v <= 8) return 'Heavy, affecting most of daily life';
-    return 'Very intense — hard to get through the day';
+    return 'Very intense: hard to get through the day';
   };
 
   return (
@@ -278,13 +278,15 @@ export default function IntakePage() {
               </div>
 
               <div className="field pt-4">
-                <label className="field-label">How intense does it feel — most days?</label>
-                <div className="p-5 bg-wise-surface-sunk border border-wise-hairline rounded-2xl flex flex-col items-center">
-                  <div className="text-4xl font-display font-semibold tracking-tight text-wise-teal-deep">
+                <label className="field-label">How intense does it feel (most days)?</label>
+                <div className="slider-card flex flex-col items-center">
+                  <div className="intensity-display">
                     {watchedIntensity}
-                    <span className="text-lg text-wise-muted font-normal"> / 10</span>
+                    <span style={{ fontSize: '1.2rem', color: 'var(--muted)', fontWeight: 'normal' }}>/10</span>
                   </div>
-                  <div className="text-xs text-wise-muted mt-1">{intensityLabel(watchedIntensity)}</div>
+                  <div style={{ textAlign: 'center', fontSize: '13.5px', color: 'var(--muted)', marginTop: '4px' }}>
+                    {intensityLabel(watchedIntensity)}
+                  </div>
                   
                   <input
                     type="range"
@@ -294,8 +296,9 @@ export default function IntakePage() {
                     value={watchedIntensity}
                     onChange={(e) => setValue('intensity', Number(e.target.value))}
                     className="slider"
+                    style={{ marginTop: '14px', width: '100%' }}
                   />
-                  <div className="flex justify-between w-full text-[10px] font-mono text-wise-muted mt-2 uppercase tracking-wide">
+                  <div className="scale-rail w-full">
                     <span>Mild</span>
                     <span>Moderate</span>
                     <span>Significant</span>
@@ -557,7 +560,7 @@ export default function IntakePage() {
               className="btn btn-primary btn-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {stepIndex === STEPS.length - 1 ? 'Submit & Review' : 'Next'}
-              <span className="inner flex items-center gap-1">→</span>
+              <span className="inner icon-only"><ArrowRight className="w-3 h-3" /></span>
             </button>
           </div>
         </PremiumCard>

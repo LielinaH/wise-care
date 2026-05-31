@@ -7,7 +7,7 @@ import { storage } from '@/lib/storage';
 import { Provider, IntakeAnswers } from '@/lib/types';
 import { MOCK_PROVIDERS } from '@/lib/data/mockProviders';
 import { matchProviders } from '@/lib/matching/matchProviders';
-import { Check, Star, Send } from 'lucide-react';
+import { Check, Star, Send, Filter, Info, AlertTriangle, ArrowRight } from 'lucide-react';
 import ProviderCard from '@/components/ui/ProviderCard';
 import PremiumCard from '@/components/ui/PremiumCard';
 import Notice from '@/components/ui/Notice';
@@ -17,6 +17,14 @@ export default function ProviderMatchingPage() {
   const [matches, setMatches] = useState<Provider[]>([]);
   const [savedIds, setSavedIds] = useState<string[]>([]);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+
+  const [activeFilters, setActiveFilters] = useState({
+    type: 'all',
+    modality: 'all',
+    insurance: 'all',
+    slidingScale: false,
+  });
+  const [sortBy, setSortBy] = useState('best');
 
   useEffect(() => {
     const answers = storage.getIntake();
@@ -53,14 +61,66 @@ export default function ProviderMatchingPage() {
 
   const hasIntake = intake.concerns && intake.concerns.length > 0;
 
+  // Filter chips definitions
+  const FILTER_CHIPS = {
+    type: [
+      { v: 'all', l: 'All types' },
+      { v: 'Therapist', l: 'Therapists' },
+      { v: 'Medication evaluation', l: 'Medication eval' },
+      { v: 'Group practice', l: 'Group practice' },
+      { v: 'Community clinic', l: 'Community clinic' },
+      { v: 'Support group', l: 'Support group' },
+    ],
+    modality: [
+      { v: 'all', l: 'Any' },
+      { v: 'Telehealth', l: 'Telehealth' },
+      { v: 'In-person', l: 'In-person' },
+    ],
+    insurance: [
+      { v: 'all', l: 'Any payment' },
+      { v: 'Aetna', l: 'Aetna' },
+      { v: 'BCBS', l: 'BCBS' },
+      { v: 'Cigna', l: 'Cigna' },
+      { v: 'United', l: 'United' },
+      { v: 'Sliding scale', l: 'Sliding scale' },
+      { v: 'Self-pay', l: 'Self-pay' },
+      { v: 'Free', l: 'Free' },
+    ],
+  };
+
+  const passes = (p: Provider) => {
+    if (activeFilters.type !== 'all' && p.type !== activeFilters.type) return false;
+    if (activeFilters.modality !== 'all' && !p.modality.includes(activeFilters.modality)) return false;
+    if (activeFilters.insurance !== 'all' && !p.insurance.some(i => i.toLowerCase().includes(activeFilters.insurance.toLowerCase()))) return false;
+    if (activeFilters.slidingScale && !p.slidingScale) return false;
+    return true;
+  };
+
+  const filtered = matches.filter(passes);
+
+  const sorted = [...filtered].sort((a, b) => {
+    if (sortBy === 'availability') {
+      return a.nextAvailable.localeCompare(b.nextAvailable);
+    }
+    if (sortBy === 'cost') {
+      return a.sessionCost.localeCompare(b.sessionCost);
+    }
+    return b.matchScore - a.matchScore;
+  });
+
   return (
-    <AppShell title="Support Options" crumbs={['Care', 'Support Options']} actions={
-      <div className="flex gap-2">
-        <Link href="/dashboard" className="btn btn-ghost btn-sm text-xs font-semibold">Dashboard</Link>
-        <Link href="/intake" className="btn btn-quiet btn-sm text-xs font-semibold">Update Intake</Link>
-      </div>
-    }>
-      <div className="enter-stagger space-y-6">
+    <AppShell 
+      title="Matched support options" 
+      crumbs={['Care', 'Care route', 'Options']} 
+      actions={
+        <div className="flex gap-2">
+          <Link href="/care-packet" className="btn btn-primary btn-sm">
+            Open packet<span className="inner icon-only"><ArrowRight className="w-3 h-3" /></span>
+          </Link>
+        </div>
+      }
+    >
+      <div className="enter">
         
         {/* Banner toast */}
         {toastMsg && (
@@ -70,18 +130,23 @@ export default function ProviderMatchingPage() {
           </div>
         )}
 
-        {/* Informational Header */}
-        <PremiumCard variant="standard" title="Matched Options Summary">
-          <p className="text-xs text-wise-muted mt-1 leading-relaxed max-w-[70ch]">
-            Below are synthetic provider organizations, peer groups, and community programs filtered dynamically. 
-            We rank them by compatibility based on your location state, preferred modality, insurance selection, and urgency. 
-            For this prototype, your information is stored locally in this browser session. Nothing is shared unless you explicitly choose to send a simulated connection request.
-          </p>
-        </PremiumCard>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '14px', marginBottom: '24px', flexWrap: 'wrap' }}>
+          <div>
+            <span className="kicker">Matched for you</span>
+            <h2 className="h2" style={{ margin: '8px 0 4px' }}>Support options that fit your route.</h2>
+            <p style={{ color: 'var(--muted)', margin: 0, fontSize: '14.5px' }}>
+              Filtered by your insurance, location, and preferences. Save options you'd like to revisit.
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <Link href="/care-route" className="btn btn-quiet btn-sm">← Care route</Link>
+            <Link href="/care-packet" className="btn btn-ghost btn-sm">Open packet</Link>
+          </div>
+        </div>
 
         {/* If no intake warning */}
         {!hasIntake && (
-          <Notice variant="warn" title="Standard Directory View">
+          <Notice variant="warn" title="Standard Directory View" className="mb-6">
             <span className="text-xs">
               You are viewing the provider list without intake metrics. 
               Fill out the private check-in to rank these options by compatibility score and generate reasoning briefs.
@@ -94,18 +159,149 @@ export default function ProviderMatchingPage() {
           </Notice>
         )}
 
-        {/* Matches Grid */}
-        <div className="space-y-4">
-          {matches.map((provider) => (
-            <ProviderCard
-              key={provider.id}
-              provider={provider}
-              isSaved={savedIds.includes(provider.id)}
-              hasIntake={hasIntake || false}
-              onSaveToggle={() => handleSaveToggle(provider.id, provider.name)}
-              connectUrl={`/connection-request?providerId=${provider.id}`}
-            />
-          ))}
+        <div className="match-grid">
+          {/* Sidebar Filters */}
+          <aside className="filters">
+            <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Filter className="w-3.5 h-3.5" /> Filters
+            </h4>
+
+            <div className="filter-block">
+              <span className="lbl">Support type</span>
+              <div className="filter-pill-row">
+                {FILTER_CHIPS.type.map((c) => (
+                  <button
+                    key={c.v}
+                    onClick={() => setActiveFilters(prev => ({ ...prev, type: c.v }))}
+                    className={`filter-pill ${activeFilters.type === c.v ? 'active' : ''}`}
+                  >
+                    {c.l}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="filter-block">
+              <span className="lbl">How you meet</span>
+              <div className="filter-pill-row">
+                {FILTER_CHIPS.modality.map((c) => (
+                  <button
+                    key={c.v}
+                    onClick={() => setActiveFilters(prev => ({ ...prev, modality: c.v }))}
+                    className={`filter-pill ${activeFilters.modality === c.v ? 'active' : ''}`}
+                  >
+                    {c.l}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="filter-block">
+              <span className="lbl">Payment / insurance</span>
+              <div className="filter-pill-row">
+                {FILTER_CHIPS.insurance.map((c) => (
+                  <button
+                    key={c.v}
+                    onClick={() => setActiveFilters(prev => ({ ...prev, insurance: c.v }))}
+                    className={`filter-pill ${activeFilters.insurance === c.v ? 'active' : ''}`}
+                  >
+                    {c.l}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="filter-block" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span className="lbl" style={{ margin: 0 }}>Sliding scale only</span>
+              <button 
+                onClick={() => setActiveFilters(prev => ({ ...prev, slidingScale: !prev.slidingScale }))}
+                className={`filter-pill ${activeFilters.slidingScale ? 'active' : ''}`}
+              >
+                {activeFilters.slidingScale ? 'On' : 'Off'}
+              </button>
+            </div>
+
+            <div className="filter-block">
+              <span className="lbl">Saved to plan</span>
+              <div style={{ fontSize: '12.5px', color: 'var(--muted-2)' }}>
+                {savedIds.length} option{savedIds.length === 1 ? '' : 's'} saved
+              </div>
+              {savedIds.length > 0 && (
+                <Link href="/care-packet" style={{ display: 'inline-block', marginTop: '6px', fontSize: '12px', color: 'var(--teal-deep)', fontWeight: 500 }}>
+                  Review saved <ArrowRight className="w-3.5 h-3.5 inline ml-0.5" />
+                </Link>
+              )}
+            </div>
+          </aside>
+
+          {/* Results Main Pane */}
+          <div>
+            <div className="results-head">
+              <div className="results-count">
+                <strong>{sorted.length}</strong> option{sorted.length === 1 ? '' : 's'} match your filters · ranked by fit
+              </div>
+              <select 
+                value={sortBy} 
+                onChange={(e) => setSortBy(e.target.value)}
+                className="select" 
+                style={{ width: 'auto', fontSize: '13px', padding: '7px 12px' }}
+              >
+                <option value="best">Sort · Best match</option>
+                <option value="availability">Sort · Earliest availability</option>
+                <option value="cost">Sort · Lowest cost</option>
+              </select>
+            </div>
+
+            {/* Crisis Callout for High Safety Risks */}
+            {(intake.safety === 'immediate' || intake.safety === 'recent') && (
+              <div className="resource-callout">
+                <div className="ico bg-wise-danger text-white">
+                  <AlertTriangle className="w-[18px] h-[18px]" />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <h4>Crisis & Urgent Hotlines</h4>
+                  <p>
+                    If your safety changes, please reach out to emergency resources. Professional services are available 24/7.
+                  </p>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <a href="tel:988" className="btn btn-danger btn-sm">Call or text 988</a>
+                    <a href="https://988lifeline.org/chat/" target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm">Chat online</a>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {sorted.length === 0 ? (
+              <div className="card" style={{ textAlign: 'center', padding: '40px' }}>
+                <p className="muted">No options match these filters. Try widening the criteria.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {sorted.map((provider, i) => (
+                  <ProviderCard
+                    key={provider.id}
+                    provider={provider}
+                    isSaved={savedIds.includes(provider.id)}
+                    hasIntake={hasIntake || false}
+                    isFeatured={i === 0 && hasIntake && provider.matchScore > 85}
+                    onSaveToggle={() => handleSaveToggle(provider.id, provider.name)}
+                    connectUrl={`/connection-request?provider=${provider.id}`}
+                  />
+                ))}
+              </div>
+            )}
+
+            <div className="notice" style={{ marginTop: '18px' }}>
+              <Info className="w-4 h-4 shrink-0 text-wise-muted mt-0.5" />
+              <div>
+                <strong style={{ color: 'var(--fg)' }}>A note on these listings.</strong> Names, costs, and availability are simulated for this prototype. In production, listings would refresh from verified provider directories and your insurance plan.
+                <div className="text-[12px] text-wise-muted mt-2">
+                  For this prototype, your information is stored locally in this browser session. Nothing is shared unless you explicitly choose to send a simulated connection request.
+                </div>
+              </div>
+            </div>
+
+          </div>
         </div>
 
       </div>

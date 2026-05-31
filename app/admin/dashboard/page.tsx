@@ -4,15 +4,12 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import AppShell from '@/components/layout/AppShell';
 import { storage } from '@/lib/storage';
-import { ShieldAlert, Award, AlertTriangle, Users } from 'lucide-react';
-import PremiumCard from '@/components/ui/PremiumCard';
-import StatCard from '@/components/ui/StatCard';
-import Badge from '@/components/ui/Badge';
+import { ShieldAlert, Award, AlertTriangle, Users, Info, ChevronRight, Activity, ShieldAlert as AlertIcon, ArrowRight } from 'lucide-react';
 import Notice from '@/components/ui/Notice';
 
 const INITIAL_PENDING = [
   { id: 'pp-301', name: 'Marin Telehealth Group', license: 'LCSW · CA #LCS24011', specialty: 'Anxiety, Trauma', insurance: 'Private Plan A, Private Plan B, Self-pay', state: 'CA', submitted: '11 hrs ago' },
-  { id: 'pp-302', name: 'Dr. R. — Psychiatry', license: 'MD · NY #ML87302', specialty: 'Mood, ADHD', insurance: 'Private Plan B, Marketplace Plan', state: 'NY', submitted: '1 day ago' },
+  { id: 'pp-302', name: 'Dr. R. - Psychiatry', license: 'MD · NY #ML87302', specialty: 'Mood, ADHD', insurance: 'Private Plan B, Marketplace Plan', state: 'NY', submitted: '1 day ago' },
   { id: 'pp-303', name: 'Westbrook Counseling', license: 'LMFT · OR #LMF21998', specialty: 'Relationships, Burnout', insurance: 'Sliding scale, Self-pay', state: 'OR', submitted: '2 days ago' },
 ];
 
@@ -29,67 +26,115 @@ export default function AdminDashboard() {
     }
   }, []);
 
-  return (
-    <AppShell title="Admin Operations" crumbs={['Operations', 'Dashboard']}>
-      <div className="enter-stagger space-y-6">
-        
-        {/* Welcome panel */}
-        <PremiumCard
-          variant="bezel"
-          kicker="Operations Console"
-          title="Hi Admin — systems are normal."
-          sub={
-            <span className="text-xs text-wise-fg-soft mt-1 leading-normal max-w-[50ch] block">
-              The provider verification queue has {pending.length} applications awaiting credentials check. Safety flags represent 2.3% of search volume.
-            </span>
-          }
-          action={
-            <Link href="/admin/verify" className="btn btn-primary btn-sm flex items-center gap-1.5">
-              <ShieldAlert className="w-3.5 h-3.5 text-white" />
-              Verification Queue ({pending.length})
-            </Link>
-          }
-        >
-          <div className="h-2" />
-        </PremiumCard>
+  const getInitials = (name: string) => {
+    return name
+      .split(/[ \-\u2014]+/)
+      .slice(0, 2)
+      .map(s => s[0])
+      .join('')
+      .toUpperCase();
+  };
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard label="Directory Health" value="98.4%" />
-          <StatCard label="Safety Audits" value="2 Crisis" className="text-wise-danger" />
-          <StatCard label="Referrals Total" value={142} />
-          <StatCard label="Match Success" value="84.5%" />
+  return (
+    <AppShell 
+      title="Admin operations" 
+      crumbs={['Operations', 'Dashboard']}
+      actions={
+        <Link href="/admin/verify" className="btn btn-primary btn-sm flex items-center gap-1">
+          Verification queue <span className="inner">{pending.length} <ArrowRight className="w-3 h-3" /></span>
+        </Link>
+      }
+    >
+      <div className="enter-stagger stack" style={{ '--gap': '20px' } as React.CSSProperties}>
+        
+        {/* Title block */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '14px', flexWrap: 'wrap' }}>
+          <div>
+            <span className="kicker">Operational oversight · last 7 days</span>
+            <h2 className="h2" style={{ margin: '8px 0 4px' }}>Admin dashboard.</h2>
+            <p style={{ color: 'var(--muted)', margin: 0, fontSize: '14.5px' }}>
+              We oversee directory quality, routing safety, and access barriers, never individual care.
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <span className="badge"><span className="dot" style={{ background: 'oklch(56% 0.11 158)' }}></span>Systems healthy</span>
+            <button className="btn btn-ghost btn-sm" onClick={() => alert('Digest exported successfully (Simulation).')}>Export weekly digest</button>
+          </div>
         </div>
 
-        {/* main grid content */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-5">
-          {/* pending list */}
-          <PremiumCard
-            variant="standard"
-            title="Credential verification queue"
-            sub="Clinicians awaiting directory listing."
-            action={
-              <Link href="/admin/verify" className="btn btn-quiet btn-sm text-xs font-semibold">
-                See all verify queue →
+        {/* KPI Row */}
+        <div className="kpi-row">
+          <div className="kpi">
+            <span className="kpi-label">Active users</span>
+            <span className="kpi-value">1,284</span>
+            <span className="kpi-delta">▲ 12% vs prior</span>
+          </div>
+          <div className="kpi">
+            <span className="kpi-label">Referrals routed</span>
+            <span className="kpi-value">387</span>
+            <span className="kpi-delta">▲ 8% vs prior</span>
+          </div>
+          <div className="kpi">
+            <span className="kpi-label">Matching success rate</span>
+            <span className="kpi-value font-display font-semibold">71%</span>
+            <span className="kpi-delta down">▼ 2 pts</span>
+          </div>
+          <div className="kpi">
+            <span className="kpi-label">Median time-to-route</span>
+            <span className="kpi-value">3.4<span style={{ fontSize: '1rem', color: 'var(--muted)', fontWeight: 500 }}> min</span></span>
+            <span className="kpi-delta">▼ 0.6 min</span>
+          </div>
+        </div>
+
+        {/* First Panel Grid */}
+        <div className="panel-grid">
+          {/* Referral volume area-chart card */}
+          <div className="card">
+            <div className="card-head mb-4 flex justify-between items-center">
+              <div>
+                <h3 className="h3">Referral volume - last 14 days</h3>
+                <div className="sub text-wise-muted text-xs">Routed referrals, by day. Dotted line marks system maintenance window.</div>
+              </div>
+              <select className="select" style={{ width: 'auto', fontSize: '13px', padding: '7px 12px' }} defaultValue="14">
+                <option value="14">14 days</option>
+                <option value="30">30 days</option>
+                <option value="90">90 days</option>
+              </select>
+            </div>
+            
+            <div className="area-chart mt-4">
+              {[42, 38, 51, 55, 48, 62, 70, 58, 65, 72, 80, 68, 55, 75].map((v, i) => (
+                <div key={i} className="bar" style={{ height: `${v}%` }}></div>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px', paddingTop: '12px', borderTop: '1px solid var(--hairline)', fontFamily: 'var(--font-mono)', fontSize: '10.5px', color: 'var(--muted)', letterSpacing: '0.06em' }}>
+              {['MAY 18', '19', '20', '21', '22', '23', '24', '25', '26', '27', '28', '29', '30', 'MAY 31'].map(d => (
+                <span key={d}>{d}</span>
+              ))}
+            </div>
+          </div>
+
+          {/* Provider verification queue preview card */}
+          <div className="card">
+            <div className="card-head mb-4 flex justify-between items-center">
+              <div>
+                <h3 className="h3">Provider verification queue</h3>
+                <div className="sub text-wise-muted text-xs">{pending.length} pending. SLA: 2 business days.</div>
+              </div>
+              <Link href="/admin/verify" className="btn btn-quiet btn-sm flex items-center gap-1">
+                Open queue <ArrowRight className="w-3.5 h-3.5" />
               </Link>
-            }
-          >
-            <div className="divide-y divide-wise-hairline mt-4">
+            </div>
+            <div className="divide-y divide-wise-hairline">
               {pending.map((p) => (
-                <div key={p.id} className="py-3 flex items-start gap-4 hover:bg-wise-surface-2 p-2 rounded-xl transition-colors">
-                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-wise-teal-soft to-wise-blue-soft text-wise-teal-deep flex items-center justify-center shrink-0">
-                    <Award className="w-4 h-4 text-wise-teal-deep" />
+                <div key={p.id} className="verify-row py-3 hover:bg-wise-surface-2 transition-all duration-200">
+                  <div className="vp-avatar">{getInitials(p.name)}</div>
+                  <div className="flex-1 pl-3">
+                    <div style={{ fontWeight: 500, fontSize: '14px' }}>{p.name}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '2px' }}>{p.license} · {p.state}</div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-center">
-                      <span className="font-semibold text-sm text-wise-fg">{p.name}</span>
-                      <span className="font-mono text-[10px] text-wise-muted">{p.submitted}</span>
-                    </div>
-                    <p className="text-xs text-wise-fg-soft mt-0.5">{p.license}</p>
-                    <p className="text-[11px] text-wise-muted mt-1 leading-normal italic line-clamp-1">
-                      State: {p.state} · Focus: {p.specialty}
-                    </p>
-                  </div>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--muted)', letterSpacing: '0.04em' }}>{p.submitted}</span>
                 </div>
               ))}
               {pending.length === 0 && (
@@ -98,65 +143,128 @@ export default function AdminDashboard() {
                 </div>
               )}
             </div>
-          </PremiumCard>
+          </div>
+        </div>
 
-          {/* safety monitor */}
-          <PremiumCard
-            variant="standard"
-            title="High-risk routing monitor"
-            sub="Security & escalation checks."
-          >
-            <div className="space-y-4 mt-4">
-              <div className="p-4 bg-wise-danger-soft border border-wise-danger/15 rounded-xl text-xs text-wise-danger flex gap-3">
-                <AlertTriangle className="w-4.5 h-4.5 shrink-0 text-wise-danger mt-0.5 animate-pulse" />
-                <div>
-                  <span className="font-semibold block">Safety Alert Log:</span>
-                  <p className="opacity-90 leading-relaxed mt-0.5">
-                    Triggered 988 Crisis Hotline routing recommendations for CA state searches on 2026-05-30.
-                  </p>
-                </div>
+        {/* Second Panel Grid */}
+        <div className="panel-grid">
+          {/* Access Barriers */}
+          <div className="card">
+            <div className="card-head mb-4">
+              <div>
+                <h3 className="h3">Common access barriers - last 7 days</h3>
+                <div className="sub text-wise-muted text-xs">What slows users between recommendation and first appointment.</div>
               </div>
-              
-              <div className="space-y-2.5">
-                <span className="text-[11px] font-mono text-wise-muted block uppercase">Barriers Metrics</span>
-                <div className="space-y-3 text-xs">
-                  <div>
-                    <div className="flex justify-between text-wise-fg-soft mb-1">
-                      <span>Cost / Insurance Coverage</span>
-                      <span className="font-semibold">42%</span>
-                    </div>
-                    <div className="h-1.5 bg-wise-surface-sunk rounded-full overflow-hidden">
-                      <div className="h-full bg-wise-teal" style={{ width: '42%' }} />
-                    </div>
+            </div>
+            <div className="bar-chart mt-4">
+              <div className="bar-item">
+                <span className="label">Provider availability</span>
+                <div className="bar-rail warn"><div style={{ width: '82%' }}></div></div>
+                <span className="num">82%</span>
+              </div>
+              <div className="bar-item">
+                <span className="label">Insurance match</span>
+                <div className="bar-rail warn"><div style={{ width: '64%' }}></div></div>
+                <span className="num">64%</span>
+              </div>
+              <div className="bar-item">
+                <span className="label">Cost</span>
+                <div className="bar-rail"><div style={{ width: '41%' }}></div></div>
+                <span className="num">41%</span>
+              </div>
+              <div className="bar-item">
+                <span className="label">Uncertainty / next step</span>
+                <div className="bar-rail"><div style={{ width: '38%' }}></div></div>
+                <span className="num">38%</span>
+              </div>
+              <div className="bar-item">
+                <span className="label">Urgency / wait time</span>
+                <div className="bar-rail"><div style={{ width: '24%' }}></div></div>
+                <span className="num">24%</span>
+              </div>
+              <div className="bar-item">
+                <span className="label">Location</span>
+                <div className="bar-rail"><div style={{ width: '11%' }}></div></div>
+                <span className="num">11%</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column Stack panels */}
+          <div className="stack" style={{ '--gap': '14px' } as React.CSSProperties}>
+            {/* High risk routing monitor */}
+            <div className="card" style={{ padding: '22px' }}>
+              <h4 style={{ margin: '0 0 14px', fontSize: '13px', fontFamily: 'var(--font-mono)', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--muted)', fontWeight: 600 }}>
+                High-risk routing monitor
+              </h4>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '4px' }}>
+                <span className="kpi-value text-2xl font-bold font-display" style={{ color: 'oklch(38% 0.11 158)' }}>100%</span>
+                <span style={{ fontSize: '13px', color: 'var(--muted)' }}>of safety flags routed to crisis support within &lt; 1 min</span>
+              </div>
+              <div style={{ fontSize: '12.5px', color: 'var(--muted)', paddingTop: '14px', borderTop: '1px solid var(--hairline)', marginTop: '10px' }}>
+                Last flag: <strong style={{ color: 'var(--fg)' }}>12 min ago</strong> · Routed to 988 in 4 seconds · No clinical access without consent.
+              </div>
+            </div>
+
+            {/* Resource directory health */}
+            <div className="card" style={{ padding: '22px' }}>
+              <h4 style={{ margin: '0 0 12px', fontSize: '13px', fontFamily: 'var(--font-mono)', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--muted)', fontWeight: 600 }}>
+                Resource directory health
+              </h4>
+              <ul className="b-list">
+                <li>
+                  <span className="dot" style={{ background: 'oklch(56% 0.11 158)' }}></span>
+                  <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', gap: '10px', fontSize: '13.5px' }}>
+                    <span>342 verified providers</span>
+                    <span className="num" style={{ color: 'var(--muted)' }}>+5 this wk</span>
                   </div>
-                  <div>
-                    <div className="flex justify-between text-wise-fg-soft mb-1">
-                      <span>Wait Times / Backlog</span>
-                      <span className="font-semibold">28%</span>
-                    </div>
-                    <div className="h-1.5 bg-wise-surface-sunk rounded-full overflow-hidden">
-                      <div className="h-full bg-wise-teal" style={{ width: '28%' }} />
-                    </div>
+                </li>
+                <li>
+                  <span className="dot" style={{ background: 'oklch(70% 0.13 78)' }}></span>
+                  <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', gap: '10px', fontSize: '13.5px' }}>
+                    <span>11 stale listings</span>
+                    <span className="num" style={{ color: 'var(--muted)' }}>to refresh</span>
                   </div>
-                  <div>
-                    <div className="flex justify-between text-wise-fg-soft mb-1">
-                      <span>Scheduling Constraints</span>
-                      <span className="font-semibold">18%</span>
-                    </div>
-                    <div className="h-1.5 bg-wise-surface-sunk rounded-full overflow-hidden">
-                      <div className="h-full bg-wise-teal" style={{ width: '18%' }} />
-                    </div>
+                </li>
+                <li>
+                  <span className="dot" style={{ background: 'var(--danger)' }}></span>
+                  <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', gap: '10px', fontSize: '13.5px' }}>
+                    <span>2 reported availability errors</span>
+                    <span className="num" style={{ color: 'var(--muted)' }}>user flag</span>
                   </div>
+                </li>
+              </ul>
+            </div>
+
+            {/* Flagged cases */}
+            <div className="card" style={{ padding: '22px' }}>
+              <h4 style={{ margin: '0 0 12px', fontSize: '13px', fontFamily: 'var(--font-mono)', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--muted)', fontWeight: 600 }}>
+                Flagged cases for review
+              </h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div className="flag-row danger">
+                  <AlertTriangle className="w-4 h-4 text-wise-danger shrink-0" />
+                  <span><strong>Provider reported availability mismatch</strong> · Quietford · 1 user reroute</span>
+                </div>
+                <div className="flag-row">
+                  <Info className="w-4 h-4 text-wise-warn shrink-0" />
+                  <span><strong>Match score below threshold</strong> · 3 users in 24h · Recheck filters</span>
                 </div>
               </div>
             </div>
-          </PremiumCard>
+          </div>
         </div>
 
-        {/* Prototype Disclaimer */}
-        <Notice variant="standard">
-          For this prototype, your information is stored locally in this browser session. Nothing is shared unless you explicitly choose to send a simulated connection request.
-        </Notice>
+        {/* Scope disclaimer */}
+        <div className="notice flex gap-3.5 items-start">
+          <Info className="w-4.5 h-4.5 text-wise-teal shrink-0 mt-0.5" />
+          <div>
+            <strong style={{ color: 'var(--fg)' }}>Admin scope reminder.</strong> Wise Care admin oversees directory health, system performance, and safety routing. Admins do not access individual user health information; that's restricted to providers, with user consent.
+            <div className="text-[12px] text-wise-muted mt-2">
+              For this prototype, your information is stored locally in this browser session. Nothing is shared unless you explicitly choose to send a simulated connection request.
+            </div>
+          </div>
+        </div>
 
       </div>
     </AppShell>

@@ -14,7 +14,8 @@ import {
   Lock, 
   FileCheck2,
   Info,
-  Check
+  Check,
+  ArrowRight
 } from 'lucide-react';
 
 export default function LandingPage() {
@@ -39,7 +40,7 @@ export default function LandingPage() {
             </ul>
             <Link href="/signin" className="btn btn-primary btn-sm">
               Start care navigation
-              <span className="inner">→</span>
+              <span className="inner icon-only"><ArrowRight className="w-3 h-3" /></span>
             </Link>
           </div>
         </div>
@@ -53,13 +54,13 @@ export default function LandingPage() {
               <span className="kicker">AI-powered mental health access</span>
               <h1 className="h1 my-4">Find the right path to mental health support.</h1>
               <p className="lede mb-6" style={{ maxWidth: '48ch' }}>
-                Wise Care helps people understand their needs, prepare for care, and connect with the right support faster — without guessing, without dozens of cold calls, and without doing it alone.
+                Wise Care helps people understand their needs, prepare for care, and connect with the right support faster, without guessing, without dozens of cold calls, and without doing it alone.
               </p>
 
               <div className="flex flex-wrap gap-3 my-6">
                 <Link href="/signin" className="btn btn-primary btn-lg">
                   Start care navigation
-                  <span className="inner">Begin →</span>
+                  <span className="inner">Begin <ArrowRight className="w-3.5 h-3.5" /></span>
                 </Link>
                 <a href="#how" className="btn btn-ghost btn-lg">Explore how it works</a>
               </div>
@@ -83,7 +84,7 @@ export default function LandingPage() {
                   <span className="num">3</span>
                   <div className="t">
                     <strong>Provider-ready packet</strong>
-                    A short summary to share with a clinician — so your first visit isn't lost in paperwork.
+                    A short summary to share with a clinician, so your first visit isn't lost in paperwork.
                   </div>
                 </div>
               </div>
@@ -142,9 +143,9 @@ export default function LandingPage() {
                   </div>
                 </div>
                 <div className="mt-4 pt-3.5 border-t border-wise-hairline flex justify-between items-center text-xs">
-                  <span className="font-mono text-[10px] text-wise-muted tracking-wider uppercase">SAMPLE PREVIEW — SIMULATED DATA</span>
-                  <Link href="/signin" className="text-wise-teal-deep font-semibold hover:underline">
-                    View full route →
+                  <span className="font-mono text-[10px] text-wise-muted tracking-wider uppercase">SAMPLE PREVIEW - SIMULATED DATA</span>
+                  <Link href="/signin" className="text-wise-teal-deep font-semibold hover:underline flex items-center gap-1">
+                    View full route <ArrowRight className="w-3.5 h-3.5" />
                   </Link>
                 </div>
               </div>
@@ -184,7 +185,7 @@ export default function LandingPage() {
                 <Users className="w-5 h-5" />
               </div>
               <div className="word">Fragmented</div>
-              <div className="desc">Directories are out of date. Providers don't return calls. The first appointment is weeks away — if it happens.</div>
+              <div className="desc">Directories are out of date. Providers don't return calls. The first appointment is weeks away, if it happens.</div>
             </div>
             <div className="problem-card">
               <div className="ico">
@@ -217,7 +218,7 @@ export default function LandingPage() {
             <div className="sol-step">
               <div className="step-num">02 · SAFETY</div>
               <div className="step-t">Safety check</div>
-              <div className="step-d">Looks for indicators of acute risk. If anything is flagged, routes immediately to crisis support — not a waitlist.</div>
+              <div className="step-d">Looks for indicators of acute risk. If anything is flagged, routes immediately to crisis support, not a waitlist.</div>
             </div>
             <div className="sol-step">
               <div className="step-num">03 · ROUTE</div>
@@ -227,12 +228,12 @@ export default function LandingPage() {
             <div className="sol-step">
               <div className="step-num">04 · MATCH</div>
               <div className="step-t">Provider matching</div>
-              <div className="step-d">Filters real-world barriers — insurance, location, availability, sliding scale — and surfaces options that actually fit.</div>
+              <div className="step-d">Filters real-world barriers (insurance, location, availability, sliding scale) and surfaces options that actually fit.</div>
             </div>
             <div className="sol-step">
               <div className="step-num">05 · PACKET</div>
               <div className="step-t">Care Packet</div>
-              <div className="step-d">A short, provider-ready summary you can share with consent — so the first appointment starts past intake paperwork.</div>
+              <div className="step-d">A short, provider-ready summary you can share with consent, so the first appointment starts past intake paperwork.</div>
             </div>
           </div>
 
@@ -252,7 +253,7 @@ export default function LandingPage() {
           <div className="section-head max-w-[720px]">
             <span className="kicker">Built for</span>
             <h2 className="h2 my-3">A platform with sides for everyone who supports the journey.</h2>
-            <p className="lede">Care navigation works because every stakeholder has the right view — and never sees what they shouldn't.</p>
+            <p className="lede">Care navigation works because every stakeholder has the right view and never sees what they shouldn't.</p>
           </div>
 
           <div className="stake-grid">
@@ -268,7 +269,7 @@ export default function LandingPage() {
                 <Users className="w-5 h-5" />
               </div>
               <div className="t">Providers</div>
-              <div className="d">Referrals arrive with context already structured — and only what the user agreed to share.</div>
+              <div className="d">Referrals arrive with context already structured, and only what the user agreed to share.</div>
             </div>
             <div className="stake-card">
               <div className="ico">
@@ -282,14 +283,14 @@ export default function LandingPage() {
                 <Building className="w-5 h-5" />
               </div>
               <div className="t">Universities</div>
-              <div className="d">Student support demand and routing data — without any individual health information.</div>
+              <div className="d">Student support demand and routing data, without any individual health information.</div>
             </div>
             <div className="stake-card">
               <div className="ico">
                 <Lock className="w-5 h-5" />
               </div>
               <div className="t">Insurers</div>
-              <div className="d">Operational signals on access barriers — coverage gaps, wait times, completion rates.</div>
+              <div className="d">Operational signals on access barriers: coverage gaps, wait times, and completion rates.</div>
             </div>
           </div>
         </div>
@@ -302,7 +303,7 @@ export default function LandingPage() {
             <div>
               <span className="kicker">Safety & responsibility</span>
               <h2 className="h2 mt-3.5 mb-3.5">Built with the seriousness this work demands.</h2>
-              <p className="lede">Wise Care is for navigation, not treatment. We are explicit about what we do — and what we will never do — because the people who reach us deserve clarity, not hype.</p>
+              <p className="lede">Wise Care is for navigation, not treatment. We are explicit about what we do and what we will never do because the people who reach us deserve clarity, not hype.</p>
 
               <div className="notice danger mt-5">
                 <AlertTriangle className="ico w-5 h-5 shrink-0 mt-0.5 text-wise-danger" />
@@ -361,10 +362,10 @@ export default function LandingPage() {
         <div className="container">
           <div className="cta-band">
             <h2>A clearer first step takes about six minutes.</h2>
-            <p>Begin the private intake, see your suggested care route, and decide what — if anything — to do next.</p>
+            <p>Begin the private intake, see your suggested care route, and decide what, if anything, to do next.</p>
             <Link href="/signin" className="btn btn-primary btn-lg">
               Start care navigation
-              <span className="inner">→ Begin</span>
+              <span className="inner"><ArrowRight className="w-3.5 h-3.5" /> Begin</span>
             </Link>
             <div className="mt-4 text-xs text-wise-muted">
               For this prototype, your information is stored locally in this browser session. Nothing is shared unless you explicitly choose to send a simulated connection request.
@@ -420,7 +421,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="foot-bottom">
-            <span>© Wise Care — prototype only · simulated data · v0.1</span>
+            <span>© Wise Care - prototype only · simulated data · v0.1</span>
             <span className="mono">Not a clinical service. If in immediate danger, call 988 or 911.</span>
           </div>
         </div>

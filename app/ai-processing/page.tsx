@@ -7,10 +7,13 @@ import AppShell from '@/components/layout/AppShell';
 import AgentStatusCard from '@/components/ui/AgentStatusCard';
 import Notice from '@/components/ui/Notice';
 
+import { Info } from 'lucide-react';
+
 interface AgentStep {
   name: string;
   desc: string;
   status: 'pending' | 'running' | 'completed' | 'failed';
+  output?: string;
 }
 
 export default function AIProcessingPage() {
@@ -18,11 +21,11 @@ export default function AIProcessingPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   
   const [steps, setSteps] = useState<AgentStep[]>([
-    { name: 'Intake Agent', desc: 'Structuring your responses...', status: 'running' },
-    { name: 'Safety Agent', desc: 'Scanning for crisis signals and risk levels...', status: 'pending' },
-    { name: 'Care Route Agent', desc: 'Formulating clinical pathways and disclaimers...', status: 'pending' },
-    { name: 'Matching Agent', desc: 'Filtering providers based on location and insurance...', status: 'pending' },
-    { name: 'Care Packet Agent', desc: 'Pre-drafting shareable summary briefs...', status: 'pending' },
+    { name: 'Intake Agent', desc: 'Structuring your concerns into a private summary.', status: 'running', output: '<strong>Captured</strong>: anxiety + sleep disruption · 6 weeks · intensity 7/10 · impact on sleep, concentration, mood.' },
+    { name: 'Safety Agent', desc: 'Checking for any indicators of urgent risk.', status: 'pending', output: '<strong>No immediate risk indicators.</strong> Care route can proceed normally. We will surface crisis support throughout the experience.' },
+    { name: 'Care Route Agent', desc: 'Identifying a recommended support path.', status: 'pending', output: 'Suggested route: <strong>therapy with a sleep + anxiety focus</strong>, weekly. Optional psychiatric consultation if therapy alone is insufficient over 4-6 weeks.' },
+    { name: 'Matching Agent', desc: 'Comparing options against your insurance, location, and preferences.', status: 'pending', output: 'Surfaced <strong>5 options</strong>: 3 telehealth therapists (Aetna / self-pay) · 1 community clinic (sliding scale) · 1 peer support group (free).' },
+    { name: 'Care Packet Agent', desc: 'Preparing a provider-ready summary you can share with consent.', status: 'pending', output: 'Draft Care Packet ready: concerns, timeline, daily impact, care goals, questions to ask, and insurance notes, exactly what a clinician needs in 10 seconds.' }
   ]);
 
   useEffect(() => {
@@ -56,7 +59,7 @@ export default function AIProcessingPage() {
         
         return next;
       });
-    }, 1000);
+    }, 1100);
 
     const fetchCareRoute = async () => {
       try {
@@ -102,16 +105,27 @@ export default function AIProcessingPage() {
   }, [router]);
 
   return (
-    <AppShell title="Analyzing Intake" crumbs={['Care', 'Processing']}>
-      <div className="max-w-[560px] mx-auto text-center py-8">
-        <span className="kicker">Care Navigation Pipeline</span>
-        <h2 className="text-2xl font-display font-semibold tracking-tight text-wise-fg mt-3 mb-2">
-          AI agents are organizing your options
-        </h2>
-        <p className="text-xs text-wise-muted mb-8 max-w-[48ch] mx-auto leading-relaxed">
-          Our automated workflow checks for safety, identifies cost barriers, and translates symptoms into professional categories. 
-          <em> This is an administrative routing process, not a clinical review.</em>
-        </p>
+    <AppShell title="AI agent review" crumbs={['Care', 'Intake', 'AI review']}>
+      <div className="processing-wrap enter">
+        <div className="processing-hero">
+          <span className="kicker">AI agent review</span>
+          <h2>Your intake is being reviewed by five specialized agents.</h2>
+          <p>
+            Each agent focuses on one part of your care route. You'll see the full result in a moment. 
+            This is review work, not a diagnosis, not a clinical decision.
+          </p>
+          <div className="row" style={{ justifyContent: 'center', gap: '14px', flexWrap: 'wrap' }}>
+            <span className="badge teal">
+              <span className="dot"></span>Working privately on your data
+            </span>
+            <span className="badge">
+              <span className="dot"></span>No data shared yet
+            </span>
+            <span className="badge">
+              <span className="dot"></span>Crisis routing always available
+            </span>
+          </div>
+        </div>
 
         {errorMsg ? (
           <Notice variant="danger" title="Process Blocked" className="text-left">
@@ -124,23 +138,30 @@ export default function AIProcessingPage() {
             </button>
           </Notice>
         ) : (
-          <div className="card bg-wise-surface border border-wise-hairline rounded-2xl p-5 shadow-sm text-left divide-y divide-wise-hairline">
+          <div className="agent-rail">
             {steps.map((s, idx) => (
               <AgentStatusCard
                 key={idx}
                 name={s.name}
                 desc={s.desc}
                 status={s.status}
+                output={s.output}
                 stepNumber={idx + 1}
               />
             ))}
           </div>
         )}
 
+        <div className="notice" style={{ marginTop: '22px' }}>
+          <Info className="w-4 h-4 shrink-0 text-wise-muted mt-0.5" />
+          <div>
+            <strong style={{ color: 'var(--fg)' }}>A note on AI in healthcare.</strong> These agents structure information and suggest options. They do not diagnose or prescribe. A licensed professional is the next step; Wise Care just helps you get to one faster.
+          </div>
+        </div>
+        
         <Notice className="mt-8 text-left" title="Security & Privacy">
           For this prototype, your information is stored locally in this browser session. Nothing is shared unless you explicitly choose to send a simulated connection request. No medical claims or diagnoses are generated.
         </Notice>
-
       </div>
     </AppShell>
   );

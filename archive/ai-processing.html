@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wise Care — AI agents reviewing your intake</title>
+  <link rel="stylesheet" href="shared/styles.css">
+  <style>
+    .processing-wrap { max-width: 880px; margin: 0 auto; }
+    .processing-hero {
+      padding: 36px;
+      background:
+        radial-gradient(60% 60% at 20% 20%, oklch(58% 0.085 195 / 0.12), transparent 60%),
+        radial-gradient(50% 50% at 100% 100%, oklch(56% 0.10 240 / 0.08), transparent 60%),
+        var(--surface);
+      border: 1px solid var(--hairline);
+      border-radius: var(--r-xl);
+      box-shadow: var(--sh-2);
+      margin-bottom: 24px;
+      text-align: center;
+    }
+    .processing-hero h2 {
+      font-family: var(--font-display);
+      font-size: clamp(1.6rem, 3vw, 2.1rem);
+      font-weight: 600;
+      letter-spacing: -0.024em;
+      line-height: 1.1;
+      margin: 14px 0 8px;
+    }
+    .processing-hero p { color: var(--fg-soft); max-width: 50ch; margin: 0 auto 22px; }
+
+    .agent-rail {
+      display: flex; flex-direction: column;
+      gap: 14px;
+    }
+    .agent-card {
+      display: grid;
+      grid-template-columns: 56px 1fr auto;
+      gap: 18px;
+      align-items: center;
+      padding: 20px;
+      background: var(--surface);
+      border: 1px solid var(--hairline);
+      border-radius: var(--r-lg);
+      transition: all var(--t-base) var(--spring);
+      position: relative;
+    }
+    .agent-card.pending { opacity: 0.55; }
+    .agent-card.running {
+      border-color: oklch(58% 0.085 195 / 0.4);
+      box-shadow: var(--sh-2), 0 0 0 3px oklch(58% 0.085 195 / 0.08);
+    }
+    .agent-card.done { background: var(--surface-2); }
+
+    .agent-avatar {
+      width: 48px; height: 48px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, oklch(94% 0.025 195), oklch(94% 0.025 240));
+      color: var(--teal-deep);
+      display: grid; place-items: center;
+      flex-shrink: 0;
+      position: relative;
+    }
+    .agent-card.running .agent-avatar {
+      background: linear-gradient(135deg, var(--teal), var(--teal-deep));
+      color: white;
+      animation: pulse-ring 2.2s var(--spring) infinite;
+    }
+    .agent-card.done .agent-avatar {
+      background: var(--success-soft);
+      color: oklch(38% 0.11 158);
+    }
+    .agent-name { font-weight: 600; font-size: 14.5px; letter-spacing: -0.008em; }
+    .agent-desc { font-size: 13px; color: var(--muted); line-height: 1.5; margin-top: 2px; }
+    .agent-status {
+      display: flex; align-items: center; gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+    }
+    .agent-card.running .agent-status { color: var(--teal-deep); }
+    .agent-card.done .agent-status { color: oklch(38% 0.11 158); }
+
+    .running-bar {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 2px;
+      background: var(--surface-sunk);
+      border-radius: 0 0 var(--r-lg) var(--r-lg);
+      overflow: hidden;
+    }
+    .running-bar > div {
+      height: 100%;
+      width: 30%;
+      background: linear-gradient(90deg, var(--teal-deep), var(--teal));
+      border-radius: var(--r-pill);
+      animation: bar-slide 1.4s var(--spring) infinite;
+    }
+    @keyframes bar-slide {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(400%); }
+    }
+
+    .agent-output {
+      grid-column: 2 / 4;
+      margin-top: 14px;
+      padding: 14px 16px;
+      background: var(--surface-2);
+      border: 1px solid var(--hairline);
+      border-radius: var(--r-md);
+      font-size: 13.5px;
+      color: var(--fg-soft);
+      line-height: 1.55;
+    }
+    .agent-output strong { color: var(--fg); font-weight: 600; }
+
+    .processing-final {
+      margin-top: 28px;
+      padding: 26px;
+      background: linear-gradient(180deg, var(--surface), var(--surface-2));
+      border: 1px solid var(--hairline);
+      border-radius: var(--r-xl);
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div id="app-root"></div>
+
+  <script src="shared/app.js"></script>
+  <script>
+    const AGENTS = [
+      { id: 'intake',  name: 'Intake Agent',      desc: 'Structuring your concerns into a private summary.', output: '<strong>Captured</strong>: anxiety + sleep disruption · 6 weeks · intensity 7/10 · impact on sleep, concentration, mood.' },
+      { id: 'safety',  name: 'Safety Agent',      desc: 'Checking for any indicators of urgent risk.', output: '<strong>No immediate risk indicators.</strong> Care route can proceed normally. We will surface crisis support throughout the experience.' },
+      { id: 'route',   name: 'Care Route Agent',  desc: 'Identifying a recommended support path.', output: 'Suggested route: <strong>therapy with a sleep + anxiety focus</strong>, weekly. Optional psychiatric consultation if therapy alone is insufficient over 4–6 weeks.' },
+      { id: 'match',   name: 'Matching Agent',    desc: 'Comparing options against your insurance, location, and preferences.', output: 'Surfaced <strong>5 options</strong>: 3 telehealth therapists (Aetna / self-pay) · 1 community clinic (sliding scale) · 1 peer support group (free).' },
+      { id: 'packet',  name: 'Care Packet Agent', desc: 'Preparing a provider-ready summary you can share with consent.', output: 'Draft Care Packet ready: concerns, timeline, daily impact, care goals, questions to ask, and insurance notes — exactly what a clinician needs in 10 seconds.' },
+    ];
+
+    let activeIndex = 0;
+    let completed = new Set();
+
+    function render() {
+      document.getElementById('app-root').innerHTML = appShellHTML(`
+        <div class="processing-wrap enter">
+          <div class="processing-hero">
+            <span class="kicker">AI agent review</span>
+            <h2>Your intake is being reviewed by five specialized agents.</h2>
+            <p>Each agent focuses on one part of your care route. You'll see the full result in a moment. This is review work — not a diagnosis, not a clinical decision.</p>
+            <div class="row" style="justify-content: center; gap: 14px; flex-wrap: wrap;">
+              <span class="badge teal"><span class="dot"></span>Working privately on your data</span>
+              <span class="badge"><span class="dot"></span>No data shared yet</span>
+              <span class="badge"><span class="dot"></span>Crisis routing always available</span>
+            </div>
+          </div>
+
+          <div class="agent-rail">
+            ${AGENTS.map((a, i) => {
+              const isDone = completed.has(a.id);
+              const isActive = !isDone && i === activeIndex;
+              const isPending = !isDone && i > activeIndex;
+              const klass = isDone ? 'done' : isActive ? 'running' : 'pending';
+              const status = isDone ? 'COMPLETE' : isActive ? 'WORKING…' : 'WAITING';
+              const ico = isDone ? icon('check', 18) : isActive ? `<span class="spin" style="display:inline-block;">${icon('settings', 18)}</span>` : icon('spark', 18);
+              return `
+                <div class="agent-card ${klass}">
+                  <div class="agent-avatar">${ico}</div>
+                  <div>
+                    <div class="agent-name">${a.name}</div>
+                    <div class="agent-desc">${a.desc}</div>
+                  </div>
+                  <div class="agent-status">
+                    <span class="dot" style="width:6px;height:6px;border-radius:50%;background:currentColor;"></span>
+                    ${status}
+                  </div>
+                  ${isActive ? '<div class="running-bar"><div></div></div>' : ''}
+                  ${isDone ? `<div class="agent-output">${a.output}</div>` : ''}
+                </div>
+              `;
+            }).join('')}
+          </div>
+
+          ${completed.size === AGENTS.length ? `
+            <div class="processing-final enter">
+              <span class="kicker">All agents complete</span>
+              <h3 style="font-family: var(--font-display); font-size: 1.4rem; font-weight: 600; letter-spacing: -0.02em; margin: 12px 0 6px;">Your care route is ready.</h3>
+              <p style="color: var(--muted); max-width: 48ch; margin: 0 auto 18px;">We've prepared a recommended path, matching options, and a Care Packet you can review and edit before sharing anything.</p>
+              <a href="care-route.html" class="btn btn-primary btn-lg">View care route<span class="inner">Open →</span></a>
+            </div>
+          ` : ''}
+
+          <div class="notice" style="margin-top: 22px;">
+            <span id="info-ico"></span>
+            <div>
+              <strong style="color: var(--fg);">A note on AI in healthcare.</strong> These agents structure information and suggest options. They do not diagnose or prescribe. A licensed professional is the next step — Wise Care just helps you get to one faster.
+            </div>
+          </div>
+
+        </div>
+      `);
+
+      mountAppShell({
+        active: 'intake',
+        title: 'AI agent review',
+        crumbs: ['Care', 'Intake', 'AI review'],
+        actions: `<a href="user-dashboard.html" class="btn btn-quiet btn-sm">Save &amp; exit</a>`,
+      });
+
+      document.getElementById('info-ico').innerHTML = icon('info', 16);
+    }
+
+    function tick() {
+      if (activeIndex < AGENTS.length) {
+        completed.add(AGENTS[activeIndex].id);
+        activeIndex++;
+        render();
+        if (activeIndex < AGENTS.length) {
+          setTimeout(tick, 1100);
+        }
+      }
+    }
+
+    render();
+    setTimeout(tick, 900);
+  </script>
+</body>
+</html>

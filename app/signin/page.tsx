@@ -1,112 +1,184 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { storage } from '@/lib/storage';
-import { User, Shield, Stethoscope, BarChart3, ChevronRight } from 'lucide-react';
-import Notice from '@/components/ui/Notice';
+import { Heart, Users, Shield, Building, ArrowRight } from 'lucide-react';
 
 const ROLES = [
   {
     id: 'user',
-    title: 'Individual Seeking Care',
-    description: 'Find a care route, match with providers, and prepare your shareable Care Packet.',
+    title: 'User',
+    description: 'Care navigation',
     home: '/dashboard',
-    icon: User,
+    icon: Heart,
   },
   {
     id: 'provider',
-    title: 'Care Provider / Clinic',
-    description: 'Verify your credentials, manage your profile, and receive structured referrals.',
+    title: 'Provider',
+    description: 'Referral inbox',
     home: '/provider/dashboard',
-    icon: Stethoscope,
+    icon: Users,
   },
   {
     id: 'admin',
-    title: 'Platform Administrator',
-    description: 'Verify clinicians, monitor high-risk routing safety, and view matching metrics.',
+    title: 'Admin',
+    description: 'Operations & verification',
     home: '/admin/dashboard',
     icon: Shield,
-  },
-  {
-    id: 'org',
-    title: 'Enterprise Partner (Org)',
-    description: 'Monitor aggregate access barriers and support demand trends. Anonymous data only.',
-    home: '/organization/insights',
-    icon: BarChart3,
   },
 ];
 
 export default function SignInPage() {
   const router = useRouter();
+  const [isRegister, setIsRegister] = useState(false);
+  const [email, setEmail] = useState('alex@example.com');
+  const [password, setPassword] = useState('demo-prototype');
 
   const handleRoleSelection = (roleId: string, home: string) => {
     storage.setRole(roleId);
     router.push(home);
   };
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    storage.setRole('user');
+    router.push('/dashboard');
+  };
+
   return (
-    <div className="bg-wise-bg text-wise-fg min-h-screen flex flex-col font-sans">
-      {/* Small Navbar */}
-      <nav className="border-b border-wise-hairline py-4 bg-wise-surface">
-        <div className="container max-w-[1240px] mx-auto px-6 flex items-center justify-between">
-          <Link className="flex items-center gap-2 cursor-pointer" href="/">
-            <div className="brand-mark w-7 h-7"></div>
-            <div className="brand-word text-sm">
-              Wise Care
-              <small>Care Navigation</small>
+    <div className="auth-page enter">
+      
+      {/* Left Column: Aside Visual */}
+      <aside className="auth-aside">
+        <Link className="top" href="/" style={{ cursor: 'pointer' }}>
+          <div className="brand-mark"></div>
+          <div className="brand-word">
+            Wise Care
+            <small>Care Navigation</small>
+          </div>
+        </Link>
+
+        <div className="body">
+          <span className="kicker">Welcome back</span>
+          <h1>A calm first step toward the right support.</h1>
+          <p>
+            Wise Care does not diagnose, treat, or prescribe. We help you understand your situation, find options that fit, and prepare for your first appointment.
+          </p>
+
+          <div className="aside-stats">
+            <div className="aside-stat">
+              <div className="k">Median intake</div>
+              <div className="v num">6 min</div>
             </div>
-          </Link>
-          <Link href="/" className="text-xs text-wise-muted hover:text-wise-fg">
-            Back to home
-          </Link>
+            <div className="aside-stat">
+              <div className="k">Avg. options shown</div>
+              <div className="v num">5</div>
+            </div>
+            <div className="aside-stat">
+              <div className="k">Crisis routing</div>
+              <div className="v">24 / 7</div>
+            </div>
+          </div>
         </div>
-      </nav>
+      </aside>
 
-      <div className="flex-1 flex items-center justify-center p-6 md:p-12">
-        <div className="max-w-[480px] w-full enter">
-          <div className="text-center mb-8">
-            <span className="kicker">Prototype Environment</span>
-            <h2 className="text-2xl md:text-3xl font-display font-semibold tracking-tight text-wise-fg mt-3">
-              Select your role
-            </h2>
-            <p className="text-sm text-wise-muted mt-2">
-              Select one of the simulated roles below to access the respective dashboard of the Wise Care platform.
+      {/* Right Column: Main Form */}
+      <main className="auth-main">
+        <div className="top-row">
+          {isRegister ? 'Already have an account? ' : "Don't have an account? "}
+          <a href="#" onClick={(e) => { e.preventDefault(); setIsRegister(!isRegister); }}>
+            {isRegister ? 'Sign in' : 'Create one'}
+          </a>
+        </div>
+
+        <div className="auth-card-wrap">
+          <div className="auth-card">
+            <h2>{isRegister ? 'Create your Wise Care account' : 'Sign in to Wise Care'}</h2>
+            <p className="sub">
+              {isRegister 
+                ? 'A care route stays private to you until you choose to share it.' 
+                : 'Pick a demo role to explore the prototype.'}
             </p>
-          </div>
 
-          <div className="flex flex-col gap-3">
-            {ROLES.map((role) => {
-              const RoleIcon = role.icon;
-              return (
-                <button
-                  key={role.id}
-                  onClick={() => handleRoleSelection(role.id, role.home)}
-                  className="flex items-start gap-4 p-5 bg-wise-surface border border-wise-border hover:border-wise-border-2 rounded-2xl text-left transition-all shadow-sm hover:shadow-md cursor-pointer group"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-wise-teal-soft text-wise-teal-deep flex items-center justify-center shrink-0 group-hover:bg-wise-teal group-hover:text-white transition-colors">
-                    <RoleIcon className="w-5 h-5" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-semibold text-[15px] flex items-center justify-between">
-                      {role.title}
-                      <ChevronRight className="w-4 h-4 text-wise-muted group-hover:translate-x-0.5 transition-transform" />
+            <span className="kicker" style={{ display: 'block', marginBottom: '10px' }}>Continue as demo</span>
+            <div className="demo-grid">
+              {ROLES.map((role) => {
+                const RoleIcon = role.icon;
+                return (
+                  <button
+                    key={role.id}
+                    onClick={() => handleRoleSelection(role.id, role.home)}
+                    className="demo-card"
+                  >
+                    <div className="ico">
+                      <RoleIcon className="w-4 h-4" />
                     </div>
-                    <p className="text-xs text-wise-muted mt-1 leading-relaxed">
-                      {role.description}
-                    </p>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+                    <div className="role-name">{role.title}</div>
+                    <div className="role-sub">{role.description}</div>
+                  </button>
+                );
+              })}
+            </div>
 
-          <Notice variant="brand" className="mt-8" title="Demo Environment">
-            No credentials are required for this check-in. For this prototype, your information is stored locally in this browser session. Nothing is shared unless you explicitly choose to send a simulated connection request.
-          </Notice>
+            <div className="or-line">OR USE EMAIL</div>
+
+            <form className="form-fields" onSubmit={handleSubmit}>
+              <div className="field">
+                <label className="field-label" htmlFor="email">Email</label>
+                <input 
+                  className="input" 
+                  id="email" 
+                  type="email" 
+                  placeholder="you@example.com" 
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+              <div className="field">
+                <label className="field-label" htmlFor="password">Password</label>
+                <input 
+                  className="input" 
+                  id="password" 
+                  type="password" 
+                  placeholder="••••••••" 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+              <div className="row-between" style={{ marginTop: '2px' }}>
+                <label className="check-row">
+                  <input type="checkbox" defaultChecked /> Stay signed in
+                </label>
+                <a href="#" onClick={(e) => e.preventDefault()} style={{ fontSize: '13px', color: 'var(--teal-deep)', fontWeight: 500 }}>
+                  Forgot?
+                </a>
+              </div>
+
+              <button 
+                className="btn btn-primary btn-lg" 
+                type="submit" 
+                style={{ width: '100%', justifyContent: 'center', marginTop: '8px' }}
+              >
+                {isRegister ? 'Create account' : 'Sign In'}
+                <span className="inner icon-only">
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </span>
+              </button>
+            </form>
+
+            <div className="privacy-note">
+              <strong>Your information is used only to create your care route in this prototype.</strong> No data is stored on a server. No personal health information is collected. To clear the demo, sign out and use a new browser session.
+            </div>
+          </div>
         </div>
-      </div>
+
+        <div className="auth-foot">
+          Need urgent help? <Link href="/intake">988 Suicide &amp; Crisis Lifeline</Link> · <Link href="/intake">911 for emergencies</Link>
+        </div>
+      </main>
+
     </div>
   );
 }

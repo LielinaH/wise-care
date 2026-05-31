@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wise Care — Organization insights</title>
+  <link rel="stylesheet" href="shared/styles.css">
+  <style>
+    .priv-banner {
+      padding: 18px 22px;
+      background: linear-gradient(135deg, oklch(96% 0.025 195), oklch(96% 0.025 240));
+      border: 1px solid oklch(58% 0.085 195 / 0.22);
+      border-radius: var(--r-lg);
+      display: flex; gap: 16px; align-items: center;
+      margin-bottom: 22px;
+    }
+    .priv-banner .ico {
+      width: 40px; height: 40px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--teal), var(--teal-deep));
+      color: white;
+      display: grid; place-items: center;
+      flex-shrink: 0;
+    }
+    .priv-banner h4 { margin: 0 0 4px; font-size: 14.5px; font-weight: 600; color: oklch(28% 0.07 200); }
+    .priv-banner p { margin: 0; font-size: 13px; color: oklch(34% 0.07 200); line-height: 1.55; }
+
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+    }
+    @media (max-width: 1000px) { .kpi-row { grid-template-columns: 1fr 1fr; } }
+
+    .donut {
+      width: 160px; height: 160px;
+      flex-shrink: 0;
+    }
+    .donut-row {
+      display: flex; gap: 24px; align-items: center;
+    }
+    @media (max-width: 700px) { .donut-row { flex-direction: column; align-items: flex-start; } }
+    .legend { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+    .legend-row { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+    .legend-row .swatch { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+    .legend-row .label { flex: 1; color: var(--fg-soft); }
+    .legend-row .num { font-family: var(--font-mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+    .line-chart {
+      height: 160px;
+      position: relative;
+    }
+    .line-chart svg { width: 100%; height: 100%; display: block; }
+
+    .panel-grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 1000px) { .panel-grid-2 { grid-template-columns: 1fr; } }
+
+    .bar-h {
+      display: grid;
+      grid-template-columns: 160px 1fr 60px;
+      gap: 14px;
+      align-items: center;
+      padding: 10px 0;
+    }
+    .bar-h .label { font-size: 13px; color: var(--fg-soft); }
+    .bar-h-rail { height: 10px; background: var(--surface-sunk); border-radius: var(--r-pill); overflow: hidden; }
+    .bar-h-rail > div { height: 100%; background: linear-gradient(90deg, var(--teal-deep), var(--teal)); border-radius: var(--r-pill); }
+    .bar-h .num { font-family: var(--font-mono); font-size: 12px; color: var(--muted); text-align: right; letter-spacing: 0.04em; }
+  </style>
+</head>
+<body>
+  <div id="app-root"></div>
+
+  <script src="shared/app.js"></script>
+  <script>
+    document.getElementById('app-root').innerHTML = appShellHTML(`
+      <div class="enter-stagger stack" style="--gap: 20px;">
+
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap;">
+          <div>
+            <span class="kicker">Northstar University · Member benefits dashboard</span>
+            <h2 class="h2" style="margin: 8px 0 4px;">Anonymous access trends.</h2>
+            <p style="color: var(--muted); margin: 0; font-size: 14px;">An operational view of how members are using care navigation. Aggregated, never individualized.</p>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <select class="select" style="width:auto;font-size:13px;padding:7px 12px;">
+              <option>Last 30 days</option><option>Last 90 days</option><option>Quarter</option>
+            </select>
+            <button class="btn btn-ghost btn-sm">Export</button>
+          </div>
+        </div>
+
+        <div class="priv-banner">
+          <div class="ico">${icon('lock', 18)}</div>
+          <div style="flex: 1;">
+            <h4>Privacy by design — what you do and don't see here.</h4>
+            <p><strong>You see:</strong> aggregated trends (n ≥ 10), care route distribution, barrier signals, completion rates. <strong>You never see:</strong> individual member names, intake content, care packets, provider matches, or any personal health information.</p>
+          </div>
+        </div>
+
+        <div class="kpi-row">
+          <div class="kpi">
+            <span class="kpi-label">Members using care navigation</span>
+            <span class="kpi-value num">428</span>
+            <span class="kpi-delta">▲ 18% vs prior 30</span>
+          </div>
+          <div class="kpi">
+            <span class="kpi-label">Care routes completed</span>
+            <span class="kpi-value num">312</span>
+            <span class="kpi-delta">▲ 12%</span>
+          </div>
+          <div class="kpi">
+            <span class="kpi-label">Avg. time to first appointment</span>
+            <span class="kpi-value num">8.2<span style="font-size: 1rem; color: var(--muted); font-weight: 500;"> days</span></span>
+            <span class="kpi-delta">▼ 1.4 days</span>
+          </div>
+          <div class="kpi">
+            <span class="kpi-label">Referral completion rate</span>
+            <span class="kpi-value num">73%</span>
+            <span class="kpi-delta">▲ 4 pts</span>
+          </div>
+        </div>
+
+        <div class="panel-grid-2">
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <h3>Care route distribution</h3>
+                <div class="sub">How members are routed after intake. Aggregated only.</div>
+              </div>
+            </div>
+            <div class="donut-row">
+              <svg class="donut" viewBox="0 0 42 42">
+                <circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--surface-sunk)" stroke-width="6"/>
+                <circle cx="21" cy="21" r="15.9" fill="none" stroke="oklch(58% 0.085 195)" stroke-width="6" stroke-dasharray="44 56" stroke-dashoffset="0" transform="rotate(-90 21 21)"/>
+                <circle cx="21" cy="21" r="15.9" fill="none" stroke="oklch(56% 0.10 240)" stroke-width="6" stroke-dasharray="22 78" stroke-dashoffset="-44" transform="rotate(-90 21 21)"/>
+                <circle cx="21" cy="21" r="15.9" fill="none" stroke="oklch(46% 0.085 200)" stroke-width="6" stroke-dasharray="14 86" stroke-dashoffset="-66" transform="rotate(-90 21 21)"/>
+                <circle cx="21" cy="21" r="15.9" fill="none" stroke="oklch(70% 0.13 78)" stroke-width="6" stroke-dasharray="11 89" stroke-dashoffset="-80" transform="rotate(-90 21 21)"/>
+                <circle cx="21" cy="21" r="15.9" fill="none" stroke="oklch(50% 0.04 250)" stroke-width="6" stroke-dasharray="9 91" stroke-dashoffset="-91" transform="rotate(-90 21 21)"/>
+                <text x="21" y="20" text-anchor="middle" font-size="6" fill="var(--fg)" font-family="var(--font-display)" font-weight="600" letter-spacing="-0.04em">312</text>
+                <text x="21" y="26" text-anchor="middle" font-size="2.6" fill="var(--muted)" font-family="var(--font-mono)" letter-spacing="0.05em">ROUTES</text>
+              </svg>
+              <div class="legend">
+                <div class="legend-row"><span class="swatch" style="background:oklch(58% 0.085 195);"></span><span class="label">Therapy / counseling</span><span class="num">44%</span></div>
+                <div class="legend-row"><span class="swatch" style="background:oklch(56% 0.10 240);"></span><span class="label">Community clinic</span><span class="num">22%</span></div>
+                <div class="legend-row"><span class="swatch" style="background:oklch(46% 0.085 200);"></span><span class="label">Support group</span><span class="num">14%</span></div>
+                <div class="legend-row"><span class="swatch" style="background:oklch(70% 0.13 78);"></span><span class="label">Medication evaluation</span><span class="num">11%</span></div>
+                <div class="legend-row"><span class="swatch" style="background:oklch(50% 0.04 250);"></span><span class="label">Self-guided support</span><span class="num">9%</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <h3>Member support demand — 6 months</h3>
+                <div class="sub">Monthly intakes started. Aggregated cohort signal only.</div>
+              </div>
+            </div>
+            <div class="line-chart">
+              <svg viewBox="0 0 320 160" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="oklch(58% 0.085 195)" stop-opacity="0.25"/>
+                    <stop offset="100%" stop-color="oklch(58% 0.085 195)" stop-opacity="0"/>
+                  </linearGradient>
+                </defs>
+                <path d="M0 130 L 53 110 L 107 92 L 160 78 L 213 60 L 267 48 L 320 32 L 320 160 L 0 160 Z" fill="url(#g1)"/>
+                <path d="M0 130 L 53 110 L 107 92 L 160 78 L 213 60 L 267 48 L 320 32" fill="none" stroke="oklch(46% 0.085 200)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+                ${[
+                  [0,130],[53,110],[107,92],[160,78],[213,60],[267,48],[320,32]
+                ].map(([x,y]) => `<circle cx="${x}" cy="${y}" r="3" fill="oklch(46% 0.085 200)"/>`).join('')}
+              </svg>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding-top: 12px; border-top: 1px solid var(--hairline); font-family: var(--font-mono); font-size: 11px; color: var(--muted); letter-spacing: 0.06em;">
+              <span>DEC</span><span>JAN</span><span>FEB</span><span>MAR</span><span>APR</span><span>MAY</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <h3>Common access barriers</h3>
+              <div class="sub">What's slowing members between recommendation and first appointment. Anonymous signal.</div>
+            </div>
+          </div>
+          <div>
+            <div class="bar-h"><span class="label">Cost / out-of-pocket</span><div class="bar-h-rail"><div style="width: 68%; background: linear-gradient(90deg, oklch(56% 0.13 78), oklch(70% 0.13 78));"></div></div><span class="num">68%</span></div>
+            <div class="bar-h"><span class="label">Wait time</span><div class="bar-h-rail"><div style="width: 54%;"></div></div><span class="num">54%</span></div>
+            <div class="bar-h"><span class="label">Insurance confusion</span><div class="bar-h-rail"><div style="width: 47%;"></div></div><span class="num">47%</span></div>
+            <div class="bar-h"><span class="label">Provider availability</span><div class="bar-h-rail"><div style="width: 38%;"></div></div><span class="num">38%</span></div>
+            <div class="bar-h"><span class="label">Uncertainty / next step</span><div class="bar-h-rail"><div style="width: 28%;"></div></div><span class="num">28%</span></div>
+            <div class="bar-h"><span class="label">Location / commute</span><div class="bar-h-rail"><div style="width: 9%;"></div></div><span class="num">9%</span></div>
+          </div>
+          <div class="notice brand" style="margin-top: 18px;">
+            <span id="brandico"></span>
+            <div><strong style="color: var(--teal-deep);">What you can act on.</strong> Cost is the #1 barrier this quarter. Consider expanding the EAP session benefit from 6 → 10 visits, or adding a sliding-scale community clinic partnership. Both are common interventions when this signal is dominant.</div>
+          </div>
+        </div>
+
+        <div class="panel-grid-2">
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <h3>Connection request outcomes</h3>
+                <div class="sub">Last 90 days. Aggregated across providers.</div>
+              </div>
+            </div>
+            <div class="bar-chart" style="display: flex; flex-direction: column; gap: 12px;">
+              <div class="bar-h"><span class="label">Appointment scheduled</span><div class="bar-h-rail"><div style="width: 73%; background: linear-gradient(90deg, oklch(38% 0.11 158), oklch(56% 0.11 158));"></div></div><span class="num">73%</span></div>
+              <div class="bar-h"><span class="label">Added to waitlist</span><div class="bar-h-rail"><div style="width: 14%;"></div></div><span class="num">14%</span></div>
+              <div class="bar-h"><span class="label">Provider declined</span><div class="bar-h-rail"><div style="width: 8%; background: linear-gradient(90deg, oklch(60% 0.04 250), oklch(50% 0.04 250));"></div></div><span class="num">8%</span></div>
+              <div class="bar-h"><span class="label">No response in 7 days</span><div class="bar-h-rail"><div style="width: 5%; background: linear-gradient(90deg, oklch(58% 0.17 25), oklch(70% 0.15 25));"></div></div><span class="num">5%</span></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <h3>Risk routing audit</h3>
+                <div class="sub">System safety oversight only. No personal records.</div>
+              </div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 14px;">
+              <div style="padding: 14px; background: var(--success-soft); border: 1px solid oklch(56% 0.11 158 / 0.24); border-radius: var(--r-md);">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom: 4px;">
+                  <span style="font-weight: 600; font-size: 14px; color: oklch(28% 0.10 158);">High-urgency routing</span>
+                  <span class="badge success">100% within SLA</span>
+                </div>
+                <div style="font-size: 12.5px; color: oklch(34% 0.10 158); line-height: 1.5;">All flagged intakes routed to crisis support within target window. Median 4 seconds.</div>
+              </div>
+              <div style="padding: 14px; background: var(--surface-2); border: 1px solid var(--hairline); border-radius: var(--r-md);">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom: 4px;">
+                  <span style="font-weight: 600; font-size: 14px;">Crisis support usage</span>
+                  <span class="badge">7 routed</span>
+                </div>
+                <div style="font-size: 12.5px; color: var(--muted); line-height: 1.5;">Aggregate count of members routed to 988 or local crisis line. No individual data.</div>
+              </div>
+              <div style="padding: 14px; background: var(--surface-2); border: 1px solid var(--hairline); border-radius: var(--r-md);">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom: 4px;">
+                  <span style="font-weight: 600; font-size: 14px;">Provider directory accuracy</span>
+                  <span class="badge teal">96.2%</span>
+                </div>
+                <div style="font-size: 12.5px; color: var(--muted); line-height: 1.5;">Availability and insurance accuracy across 342 verified providers, validated weekly.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="notice warn">
+          <span id="warnico"></span>
+          <div><strong>This dashboard never contains personal health information.</strong> Individual intake responses, care packets, and provider matches remain private to the member and the providers they explicitly choose to share with.</div>
+        </div>
+
+      </div>
+    `);
+
+    mountAppShell({
+      active: 'org-insights',
+      title: 'Organization insights',
+      crumbs: ['Insights', 'Anonymous trends'],
+      actions: '',
+    });
+
+    document.getElementById('brandico').innerHTML = icon('info', 16);
+    document.getElementById('warnico').innerHTML = icon('shield', 16);
+  </script>
+</body>
+</html>

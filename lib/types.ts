@@ -65,6 +65,8 @@ export interface Referral {
   insurance: string;
   summary: string;
   status?: 'accepted' | 'declined' | 'waitlisted' | 'pending';
+  providerId?: string;
+  providerName?: string;
 }
 
 export interface CarePacket {

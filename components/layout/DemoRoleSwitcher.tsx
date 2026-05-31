@@ -8,7 +8,6 @@ const ROLES = {
   user: { label: 'User', home: '/dashboard' },
   provider: { label: 'Provider', home: '/provider/dashboard' },
   admin: { label: 'Admin', home: '/admin/dashboard' },
-  org: { label: 'Org', home: '/organization/insights' },
 };
 
 export default function DemoRoleSwitcher() {

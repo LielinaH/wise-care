@@ -8,7 +8,7 @@ import PremiumCard from '@/components/ui/PremiumCard';
 import Notice from '@/components/ui/Notice';
 import { storage } from '@/lib/storage';
 import { FollowUpResult, CareRouteResult } from '@/lib/types';
-import { Check, Loader2, ArrowRight } from 'lucide-react';
+import { Check, Loader2, ArrowRight, Sparkles, Info, AlertTriangle } from 'lucide-react';
 
 const BLOCKER_OPTIONS = [
   { v: 'cost', l: 'Cost or insurance confusion', s: 'Rates are too high or insurance status is unclear' },
@@ -18,219 +18,262 @@ const BLOCKER_OPTIONS = [
   { v: 'other', l: 'Something else', s: 'The provider was not a good fit or other reasons' },
 ];
 
+const BARRIER_ADVICE: Record<string, { t: string; d: string; action: string; href: string }> = {
+  'no-availability': {
+    t: 'When availability is tight, broaden the net.',
+    d: "We've added 4 community clinic and group support options to your matches. These usually have shorter waitlists. We've also flagged self-guided sleep practices you can start tonight.",
+    action: 'View shorter-wait options',
+    href: '/matching',
+  },
+  'cost': {
+    t: "Cost shouldn't block a first step.",
+    d: 'We can switch you to sliding-scale, EAP, or free community resources. The community clinic in your area offers sessions on a $40 sliding scale and accepts uninsured.',
+    action: 'See affordable options',
+    href: '/matching',
+  },
+  'insurance': {
+    t: 'Insurance gaps are common, but there are good fallbacks.',
+    d: "Three providers we surfaced accept self-pay sliding scale. We can also help draft a request to your insurer for an out-of-network exception, or surface in-network alternatives.",
+    action: 'See self-pay options',
+    href: '/matching',
+  },
+  'unsure': {
+    t: 'Not sure where to start? Start small.',
+    d: "Try a peer support group this week: it's free, low-pressure, and a helpful way to learn what kind of care feels right before committing to weekly therapy.",
+    action: 'See peer support groups',
+    href: '/matching',
+  },
+  'changed': {
+    t: 'It is okay to step back.',
+    d: "If you'd like to pause, we'll save your Care Packet quietly. You can pick this up any time. If anything shifts, we can also try a different care route, for example, self-guided support.",
+    action: 'Pause care navigation',
+    href: '/dashboard',
+  },
+  'worsening': {
+    t: 'If symptoms are worsening, we want to move faster.',
+    d: "We've prioritized providers with same-week availability and a community clinic that handles urgent intake calls. If your situation feels acute, please use crisis support.",
+    action: 'See urgent options',
+    href: '/matching',
+  },
+};
+
 export default function FollowUpPage() {
-  const [careRoute, setCareRoute] = useState<CareRouteResult | null>(null);
-  
-  // Form state
-  const [contacted, setContacted] = useState<boolean | null>(null);
-  const [scheduled, setScheduled] = useState<boolean | null>(null);
-  const [blocker, setBlocker] = useState<string>('');
-  
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<FollowUpResult | null>(null);
+  const [contacted, setContacted] = useState<string | null>(null);
+  const [scheduled, setScheduled] = useState<string | null>(null);
+  const [barrier, setBarrier] = useState<string | null>(null);
+  const [symptoms, setSymptoms] = useState<string>('same');
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    const route = storage.getCareRoute();
-    setCareRoute(route);
+    // Seed from localstorage if exists
+    const stored = localStorage.getItem('wisecare.followup');
+    if (stored) {
+      try {
+        const state = JSON.parse(stored);
+        if (state.contacted) setContacted(state.contacted);
+        if (state.scheduled) setScheduled(state.scheduled);
+        if (state.barrier) setBarrier(state.barrier);
+        if (state.symptoms) setSymptoms(state.symptoms);
+      } catch (e) {
+        console.warn('Failed to parse cached follow up state', e);
+      }
+    }
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      const res = await fetch('/api/ai/follow-up', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contactedProvider: contacted || false,
-          scheduledAppointment: scheduled || false,
-          blocker: blocker || 'none',
-          careRoute: careRoute?.recommendedRoute || 'General Therapy',
-        }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setResult(data);
-        storage.setStorageItem('wisecare.followup', data);
-      } else {
-        throw new Error('Follow-up generation failed');
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+  const persist = (updatedState: any) => {
+    localStorage.setItem('wisecare.followup', JSON.stringify({
+      contacted,
+      scheduled,
+      barrier,
+      symptoms,
+      ...updatedState
+    }));
   };
 
-  const handleReset = () => {
-    setContacted(null);
-    setScheduled(null);
-    setBlocker('');
-    setResult(null);
-    storage.removeStorageItem('wisecare.followup');
+  const showToast = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(null), 2000);
   };
+
+  const handleSave = () => {
+    persist({});
+    showToast('Check-in saved!');
+    setTimeout(() => {
+      window.location.href = '/dashboard';
+    }, 900);
+  };
+
+  const advice = barrier ? BARRIER_ADVICE[barrier] : null;
 
   return (
-    <AppShell title="Follow-Up Check-in" crumbs={['Care', 'Follow-up']}>
-      {result && <FallbackBanner isFallback={result.isFallback} />}
-
-      <div className="max-w-[640px] mx-auto space-y-6">
-        
-        {/* Intro */}
-        {!result && (
-          <PremiumCard variant="standard" kicker="Check-in Survey" title="Care Navigation Check-in">
-            <p className="text-xs text-wise-muted leading-relaxed">
-              Let us know how your care connection process is going. If you hit any roadblocks, AI agents will suggest adjustments to keep you moving forward.
-            </p>
-          </PremiumCard>
+    <AppShell title="Follow-up check-in" crumbs={['Care', 'Follow-up']}>
+      <div className="checkin-wrap enter">
+        {toastMsg && (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-wise-fg text-wise-surface py-3 px-5 rounded-full shadow-2xl text-xs font-medium z-50 flex items-center gap-2">
+            <Check className="w-4 h-4 text-wise-teal" />
+            <span>{toastMsg}</span>
+          </div>
         )}
 
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 gap-4">
-            <Loader2 className="w-10 h-10 text-wise-teal spin" />
-            <p className="text-sm text-wise-muted">AI is analyzing check-in and preparing adjustments...</p>
+        <div style={{ marginBottom: '22px' }}>
+          <span className="kicker">Follow-up · 1 week later</span>
+          <h2 className="h2" style={{ margin: '8px 0 4px' }}>A quick check-in.</h2>
+          <p style={{ color: 'var(--muted)', margin: 0, fontSize: '14.5px', maxWidth: '60ch' }}>
+            Did anything happen this week? There's no right answer: most people don't get past the first call on the first try.
+          </p>
+        </div>
+
+        <div className="checkin-card">
+          <div className="inner">
+            
+            <div className="q-block" style={{ marginTop: 0 }}>
+              <div className="q-label">Did you contact the provider you sent a request to?</div>
+              <div className="choice-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                {[
+                  { v: 'yes', l: 'Yes, I reached out' },
+                  { v: 'partial', l: 'Tried, no response yet' },
+                  { v: 'no', l: 'Not yet' },
+                ].map(o => (
+                  <button 
+                    key={o.v}
+                    type="button"
+                    onClick={() => { setContacted(o.v); persist({ contacted: o.v }); }}
+                    className={`choice ${contacted === o.v ? 'selected' : ''}`} 
+                    style={{ padding: '12px' }}
+                  >
+                    <span className="check"><Check className="w-3 h-3 text-white" /></span>
+                    <div className="label" style={{ fontSize: '13.5px' }}>{o.l}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="q-block">
+              <div className="q-label">Were you able to schedule an appointment?</div>
+              <div className="choice-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                {[
+                  { v: 'yes', l: 'Yes, appointment scheduled' },
+                  { v: 'waitlist', l: "I'm on a waitlist" },
+                  { v: 'no', l: 'No appointment yet' },
+                ].map(o => (
+                  <button 
+                    key={o.v}
+                    type="button"
+                    onClick={() => { setScheduled(o.v); persist({ scheduled: o.v }); }}
+                    className={`choice ${scheduled === o.v ? 'selected' : ''}`} 
+                    style={{ padding: '12px' }}
+                  >
+                    <span className="check"><Check className="w-3 h-3 text-white" /></span>
+                    <div className="label" style={{ fontSize: '13.5px' }}>{o.l}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="q-block">
+              <div className="q-label">If something got in the way, what was it?</div>
+              <div className="choice-grid">
+                {[
+                  { v: 'no-availability', l: 'No availability', s: 'Waitlists, no slots, scheduling conflicts' },
+                  { v: 'cost', l: 'Cost', s: 'Out of pocket too high' },
+                  { v: 'insurance', l: 'Insurance issue', s: 'Not in-network, claim issues' },
+                  { v: 'unsure', l: 'Not sure what to do', s: 'Felt overwhelmed or stuck' },
+                  { v: 'changed', l: 'Changed mind', s: 'Decided to pause or wait' },
+                  { v: 'worsening', l: 'Worsening symptoms', s: 'Things feel harder than last week' },
+                ].map(o => (
+                  <button 
+                    key={o.v}
+                    type="button"
+                    onClick={() => { setBarrier(o.v); persist({ barrier: o.v }); }}
+                    className={`choice ${barrier === o.v ? 'selected' : ''}`}
+                  >
+                    <span className="check"><Check className="w-3 h-3 text-white" /></span>
+                    <div>
+                      <div className="label">{o.l}</div>
+                      <div className="sub">{o.s}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="q-block">
+              <div className="q-label">How have your symptoms been this week?</div>
+              <div className="choice-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+                {[
+                  { v: 'better', l: '↑ Better' },
+                  { v: 'same', l: '→ About the same' },
+                  { v: 'worse', l: '↓ A bit worse' },
+                  { v: 'much-worse', l: '↓↓ Much worse' },
+                ].map(o => (
+                  <button 
+                    key={o.v}
+                    type="button"
+                    onClick={() => { setSymptoms(o.v); persist({ symptoms: o.v }); }}
+                    className={`choice ${symptoms === o.v ? 'selected' : ''}`} 
+                    style={{ padding: '12px' }}
+                  >
+                    <span className="check"><Check className="w-3 h-3 text-white" /></span>
+                    <div className="label" style={{ fontSize: '13px' }}>{o.l}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
           </div>
-        ) : result ? (
-          // Output recommendations
-          <div className="space-y-6 enter">
-            <PremiumCard 
-              variant="standard" 
-              kicker="Adjusted Recommendation"
-              title={result.blockerSummary}
-            >
-              <div className="p-4 bg-wise-surface-sunk border border-wise-hairline rounded-xl text-xs text-wise-fg-soft leading-relaxed mt-4">
-                <span className="font-semibold text-wise-teal-deep text-[10px] uppercase tracking-wider block mb-1">Recommended Adjustment:</span>
-                <p>{result.recommendedAdjustment}</p>
-              </div>
+        </div>
 
-              <div className="space-y-1.5 pt-3 border-t border-wise-hairline mt-4">
-                <span className="text-xs text-wise-muted block mb-1">Next Best Action Steps:</span>
-                <ul className="space-y-2">
-                  {result.nextBestActions.map((action, idx) => (
-                    <li key={idx} className="flex gap-2.5 items-start text-xs text-wise-fg-soft leading-relaxed font-semibold">
-                      <ArrowRight className="w-4 h-4 text-wise-teal shrink-0 mt-0.5" />
-                      <span>{action}</span>
-                    </li>
-                  ))}
-                </ul>
+        {/* Advice section */}
+        {advice ? (
+          <div className="suggest-card enter">
+            <div className="ico">
+              <Sparkles className="w-[18px] h-[18px]" />
+            </div>
+            <div style={{ flex: 1 }}>
+              <span className="kicker">AI suggested next action</span>
+              <h3 style={{ marginTop: '8px' }}>{advice.t}</h3>
+              <p>{advice.d}</p>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <Link href={advice.href} className="btn btn-primary btn-sm">
+                  {advice.action}<span className="inner icon-only"><ArrowRight className="w-3 h-3" /></span>
+                </Link>
+                <button 
+                  onClick={() => showToast('Action plan updated')} 
+                  className="btn btn-ghost btn-sm"
+                >
+                  Update action plan
+                </button>
               </div>
-
-              <div className="p-4.5 bg-wise-teal-soft/10 border border-wise-teal/20 rounded-xl text-xs text-wise-teal-deep italic leading-relaxed mt-4">
-                "{result.encouragement}"
-              </div>
-            </PremiumCard>
-
-            <div className="flex gap-3 justify-center">
-              <button onClick={handleReset} className="btn btn-ghost btn-sm text-xs font-semibold">
-                Start new check-in
-              </button>
-              <Link href="/dashboard" className="btn btn-primary btn-sm text-xs font-semibold">
-                Back to dashboard
-              </Link>
             </div>
           </div>
         ) : (
-          // Form input
-          <form onSubmit={handleSubmit} className="space-y-6 enter">
-            
-            {/* Contacted */}
-            <PremiumCard variant="standard" title="1. Did you contact any matched provider?">
-              <div className="grid grid-cols-2 gap-3 mt-3">
-                <button
-                  type="button"
-                  onClick={() => { setContacted(true); setScheduled(null); }}
-                  className={`choice flex items-center justify-center p-3 text-xs ${
-                    contacted === true ? 'selected' : ''
-                  }`}
-                >
-                  Yes, I reached out
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setContacted(false); setScheduled(null); }}
-                  className={`choice flex items-center justify-center p-3 text-xs ${
-                    contacted === false ? 'selected' : ''
-                  }`}
-                >
-                  No, not yet
-                </button>
-              </div>
-            </PremiumCard>
-
-            {/* Scheduled */}
-            {contacted === true && (
-              <PremiumCard variant="standard" title="2. Did you schedule an appointment?" className="enter">
-                <div className="grid grid-cols-2 gap-3 mt-3">
-                  <button
-                    type="button"
-                    onClick={() => setScheduled(true)}
-                    className={`choice flex items-center justify-center p-3 text-xs ${
-                      scheduled === true ? 'selected' : ''
-                    }`}
-                  >
-                    Yes, scheduled
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setScheduled(false)}
-                    className={`choice flex items-center justify-center p-3 text-xs ${
-                      scheduled === false ? 'selected' : ''
-                    }`}
-                  >
-                    No, not scheduled
-                  </button>
-                </div>
-              </PremiumCard>
-            )}
-
-            {/* Blocker question */}
-            {((contacted === false) || (scheduled === false)) && (
-              <PremiumCard variant="standard" title="What was the primary roadblock?" className="enter">
-                <p className="text-xs text-wise-muted leading-relaxed mb-3">
-                  We use your selection to adapt your recommendations dynamically.
-                </p>
-                <div className="choice-grid grid-cols-1">
-                  {BLOCKER_OPTIONS.map((o) => {
-                    const isSelected = blocker === o.v;
-                    return (
-                      <button
-                        key={o.v}
-                        type="button"
-                        onClick={() => setBlocker(o.v)}
-                        className={`choice items-start ${isSelected ? 'selected' : ''}`}
-                      >
-                        <span className="check">
-                          {isSelected && <Check className="w-3.5 h-3.5" />}
-                        </span>
-                        <div>
-                          <div className="label">{o.l}</div>
-                          <div className="sub">{o.s}</div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </PremiumCard>
-            )}
-
-            {/* Form submit */}
-            <div className="flex justify-end pt-2">
-              <button
-                type="submit"
-                disabled={contacted === null || (contacted === true && scheduled === null) || ((contacted === false || scheduled === false) && !blocker)}
-                className="btn btn-primary btn-sm disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Submit check-in
-              </button>
+          <div className="notice" style={{ fontSize: '13.5px' }}>
+            <Info className="w-4 h-4 text-wise-teal shrink-0 mt-0.5" />
+            <div>
+              Once you select a barrier (if any), we'll suggest a specific next action based on what got in the way. 
+              There's no penalty for not having made progress; most people don't on the first try.
             </div>
-          </form>
+          </div>
         )}
 
-        <Notice variant="standard" title="Security & Privacy">
-          For this prototype, your information is stored locally in this browser session. Nothing is shared unless you explicitly choose to send a simulated connection request. These check-in responses do not constitute electronic health records.
-        </Notice>
+        {symptoms === 'much-worse' && (
+          <div className="notice danger" style={{ marginTop: '14px' }}>
+            <AlertTriangle className="w-4 h-4 text-wise-danger shrink-0 mt-0.5" />
+            <div>
+              <strong>If things feel much worse, please reach out now.</strong> You don't have to wait for a scheduled appointment. 
+              Call or text <strong>988</strong>, or call <strong>911</strong> in an emergency. These services are for exactly this moment.
+            </div>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '24px', gap: '12px', flexWrap: 'wrap' }}>
+          <Link href="/dashboard" className="btn btn-ghost">
+            ← Back to dashboard
+          </Link>
+          <button onClick={handleSave} className="btn btn-primary">
+            Save check-in &amp; update plan<span className="inner icon-only"><ArrowRight className="w-3 h-3" /></span>
+          </button>
+        </div>
 
       </div>
     </AppShell>
