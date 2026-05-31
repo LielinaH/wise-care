@@ -33,8 +33,9 @@
   --warn-soft:    oklch(95% 0.05 80);
   --danger:       oklch(58% 0.17 25);
   --danger-soft:  oklch(95% 0.04 25);
+}
 
-  /* Tailwind CSS v4 variables mapping */
+@theme {
   --color-wise-bg: var(--bg);
   --color-wise-bg-tint: var(--bg-tint);
   --color-wise-surface: var(--surface);
@@ -63,6 +64,12 @@
   --color-wise-danger: var(--danger);
   --color-wise-danger-soft: var(--danger-soft);
 
+  --font-display: var(--font-inter), -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+  --font-body:    var(--font-inter), -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+  --font-mono:    var(--font-mono), ui-monospace, 'SF Mono', Menlo, monospace;
+}
+
+:root {
   /* Radii */
   --r-sm: 10px;
   --r-md: 14px;
