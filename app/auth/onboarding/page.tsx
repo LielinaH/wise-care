@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { firestoreHelpers } from '@/lib/firebase/firestore';
-import { Check, Loader2, ArrowRight } from 'lucide-react';
+import { Check, Loader2, ArrowRight, Heart, Users, Building } from 'lucide-react';
 
 const SPECIALTIES = ['Anxiety', 'Burnout', 'Sleep', 'Relationships', 'Work stress', 'Caregiver stress', 'Depression', 'Trauma'];
 
@@ -12,6 +12,7 @@ export default function OnboardingPage() {
   const router = useRouter();
   const { currentUser, userProfile, role, isFirebaseMode, signOut } = useAuth();
 
+  const [selectedRole, setSelectedRole] = useState<'patient' | 'solo_provider' | 'provider_org'>('patient');
   const [displayName, setDisplayName] = useState('');
   
   // Solo provider states
@@ -37,6 +38,117 @@ export default function OnboardingPage() {
       setOrgName(currentUser.displayName || '');
     }
   }, [currentUser]);
+
+  if (isFirebaseMode && currentUser && !role) {
+    const handleRoleSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setLoading(true);
+      setError(null);
+      try {
+        await firestoreHelpers.setUserProfile(currentUser.uid, {
+          uid: currentUser.uid,
+          email: currentUser.email || '',
+          displayName: currentUser.displayName || currentUser.email?.split('@')[0] || 'Google User',
+          role: selectedRole,
+          onboardingComplete: false,
+        });
+      } catch (err: any) {
+        setError(err.message || 'Failed to select role.');
+      }
+      setLoading(false);
+    };
+
+    return (
+      <div className="flex justify-center items-center min-h-screen bg-wise-surface-sunk py-12 px-4 enter">
+        <div className="card w-full max-w-[600px] p-8 shadow-2xl">
+          <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+            <div className="brand-mark mx-auto mb-4"></div>
+            <h2 className="h2">Select your account type</h2>
+            <p style={{ color: 'var(--muted)', fontSize: '14.5px', marginTop: '6px' }}>
+              To complete your registration, please select how you will use Wise Care.
+            </p>
+          </div>
+
+          {error && (
+            <div style={{ padding: '12px', background: 'oklch(92% 0.04 20)', border: '1px solid oklch(80% 0.08 20)', borderRadius: 'var(--r-md)', fontSize: '13px', color: 'oklch(40% 0.12 20)', marginBottom: '16px' }}>
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleRoleSubmit} className="space-y-6">
+            <div className="field">
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginTop: '4px' }}>
+                <button
+                  type="button"
+                  onClick={() => setSelectedRole('patient')}
+                  className={`choice ${selectedRole === 'patient' ? 'selected' : ''}`}
+                  style={{ padding: '12px 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}
+                >
+                  <Heart className="w-4 h-4 text-wise-teal" />
+                  <span style={{ fontSize: '12px', fontWeight: 600 }}>Patient</span>
+                </button>
+                
+                <button
+                  type="button"
+                  onClick={() => setSelectedRole('solo_provider')}
+                  className={`choice ${selectedRole === 'solo_provider' ? 'selected' : ''}`}
+                  style={{ padding: '12px 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}
+                >
+                  <Users className="w-4 h-4 text-wise-teal" />
+                  <span style={{ fontSize: '12px', fontWeight: 600 }}>Solo Clinician</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedRole('provider_org')}
+                  className={`choice ${selectedRole === 'provider_org' ? 'selected' : ''}`}
+                  style={{ padding: '12px 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}
+                >
+                  <Building className="w-4 h-4 text-wise-teal" />
+                  <span style={{ fontSize: '12px', fontWeight: 600 }}>Clinic / Org</span>
+                </button>
+              </div>
+
+              {selectedRole === 'patient' && (
+                <span style={{ display: 'block', fontSize: '11px', color: 'var(--muted)', marginTop: '8px' }}>
+                  Access resources, build care packets, and send contact requests to providers.
+                </span>
+              )}
+              {selectedRole === 'solo_provider' && (
+                <span style={{ display: 'block', fontSize: '11px', color: 'var(--muted)', marginTop: '8px' }}>
+                  Create practitioner profile, accept referrals, and verify licensure with administrators.
+                </span>
+              )}
+              {selectedRole === 'provider_org' && (
+                <span style={{ display: 'block', fontSize: '11px', color: 'var(--muted)', marginTop: '8px' }}>
+                  Register group clinics, telehealth lines, or EAP wellness panels to accept packet requests.
+                </span>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn btn-primary"
+              style={{ width: '100%', justifyContent: 'center' }}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-white mr-1.5" style={{ animation: 'spin 1s linear infinite' }} />
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <>
+                  <span>Continue</span>
+                  <ArrowRight className="w-4 h-4 ml-1" />
+                </>
+              )}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

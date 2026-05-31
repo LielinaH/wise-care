@@ -2,6 +2,8 @@ import {
   signInWithEmailAndPassword as fbSignIn,
   createUserWithEmailAndPassword as fbRegister,
   signOut as fbSignOut,
+  signInWithPopup,
+  GoogleAuthProvider,
   UserCredential
 } from 'firebase/auth';
 import { auth, isFirebaseConfigured } from './client';
@@ -19,6 +21,14 @@ export const authActions = {
       throw new Error("Firebase is not configured. Please add your credentials in .env.local.");
     }
     return fbRegister(auth, email, password);
+  },
+
+  signInWithGoogle: async (): Promise<UserCredential> => {
+    if (!isFirebaseConfigured || !auth) {
+      throw new Error("Firebase is not configured. Please add your credentials in .env.local.");
+    }
+    const provider = new GoogleAuthProvider();
+    return signInWithPopup(auth, provider);
   },
 
   signOut: async (): Promise<void> => {

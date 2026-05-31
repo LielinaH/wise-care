@@ -15,6 +15,7 @@ interface AuthContextType {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<UserCredential | any>;
   register: (email: string, password: string) => Promise<UserCredential | any>;
+  signInWithGoogle: () => Promise<UserCredential | any>;
   signOut: () => Promise<void>;
   isFirebaseMode: boolean;
 }
@@ -26,6 +27,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   signIn: async () => {},
   register: async () => {},
+  signInWithGoogle: async () => {},
   signOut: async () => {},
   isFirebaseMode: false,
 });
@@ -140,6 +142,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return authActions.register(email, password);
   };
 
+  const signInWithGoogle = async () => {
+    if (!isFirebaseMode) {
+      const user = { uid: 'demo-local-uid', email: 'patient.demo@wisecare.test', displayName: 'Google Demo User' };
+      setCurrentUser(user);
+      setUserProfile({
+        uid: 'demo-local-uid',
+        email: 'patient.demo@wisecare.test',
+        displayName: 'Google Demo User',
+        role: 'patient',
+        onboardingComplete: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+      setRole('patient');
+      return { user };
+    }
+    return authActions.signInWithGoogle();
+  };
+
   const signOut = async () => {
     if (!isFirebaseMode) {
       setCurrentUser(null);
@@ -158,6 +179,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loading,
       signIn,
       register,
+      signInWithGoogle,
       signOut,
       isFirebaseMode
     }}>

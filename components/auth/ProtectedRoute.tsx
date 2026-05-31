@@ -24,6 +24,12 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
       return;
     }
 
+    // 1b. If authenticated but no Firestore user profile exists, redirect to onboarding to select a role
+    if (currentUser && !userProfile && pathname !== '/auth/onboarding') {
+      router.push('/auth/onboarding');
+      return;
+    }
+
     // 2. If authenticated but onboarding is not complete, redirect to onboarding
     if (userProfile && !userProfile.onboardingComplete && pathname !== '/auth/onboarding') {
       router.push('/auth/onboarding');
@@ -74,6 +80,7 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
 
   // Double check if page needs rendering or redirecting
   if (!currentUser) return null;
+  if (!userProfile && pathname !== '/auth/onboarding') return null;
   if (userProfile && !userProfile.onboardingComplete && pathname !== '/auth/onboarding') return null;
   if (allowedRoles && role && !allowedRoles.includes(role)) return null;
 
