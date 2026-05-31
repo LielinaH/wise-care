@@ -8,85 +8,13 @@ import { firestoreHelpers } from '@/lib/firebase/firestore';
 import { Heart, Users, Shield, Building, ArrowRight, Loader2 } from 'lucide-react';
 import Notice from '@/components/ui/Notice';
 
-const DEMO_ACCOUNTS = [
-  {
-    id: 'patient',
-    title: 'Patient Demo',
-    email: 'patient.demo@wisecare.test',
-    description: 'Care navigation flow',
-    icon: Heart,
-  },
-  {
-    id: 'provider_org',
-    title: 'Clinic Demo',
-    email: 'clinic.demo@wisecare.test',
-    description: 'Clinic practice dashboard',
-    icon: Building,
-  },
-  {
-    id: 'solo_provider',
-    title: 'Clinician Demo',
-    email: 'clinician.demo@wisecare.test',
-    description: 'Solo provider inbox',
-    icon: Users,
-  },
-  {
-    id: 'admin',
-    title: 'Admin Demo',
-    email: 'admin.demo@wisecare.test',
-    description: 'Platform verification queue',
-    icon: Shield,
-  },
-];
-
 export default function SignInPage() {
   const router = useRouter();
   const { signIn, signInWithGoogle, isFirebaseMode } = useAuth();
-  const [email, setEmail] = useState('patient.demo@wisecare.test');
-  const [password, setPassword] = useState('demo-prototype');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
-  const handleDemoSignIn = async (demoEmail: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await signIn(demoEmail, 'demo-prototype');
-      
-      let target = '/dashboard';
-      if (isFirebaseMode && res.user) {
-        const profile = await firestoreHelpers.getUserProfile(res.user.uid);
-        const role = profile?.role;
-        const userEmail = res.user.email || '';
-        
-        if (role === 'provider_org' || userEmail.startsWith('clinic')) {
-          target = '/provider/org/dashboard';
-        } else if (role === 'solo_provider' || userEmail.startsWith('clinician') || userEmail.startsWith('doc')) {
-          target = '/provider/solo/dashboard';
-        } else if (role === 'admin' || userEmail.startsWith('admin')) {
-          target = '/admin/dashboard';
-        } else {
-          target = '/dashboard';
-        }
-      } else {
-        const role = res.user?.email?.split('.')[0] || 'patient';
-        target = 
-          role === 'patient' 
-            ? '/dashboard' 
-            : role === 'clinic' 
-              ? '/provider/org/dashboard' 
-              : role === 'clinician' 
-                ? '/provider/solo/dashboard' 
-                : role === 'admin' 
-                  ? '/admin/dashboard' 
-                  : '/dashboard';
-      }
-      router.push(target);
-    } catch (err: any) {
-      setError(err.message || 'Failed to sign in. If using Firebase, please make sure this account exists.');
-      setLoading(false);
-    }
-  };
 
   const handleGoogleSignIn = async () => {
     setLoading(true);
@@ -185,11 +113,15 @@ export default function SignInPage() {
         <div className="auth-card-wrap">
           <div className="auth-card">
             <h2>Sign in to Wise Care</h2>
-            <p className="sub">
-              {isFirebaseMode 
-                ? 'Sign in using your account details or select a demo shortcut below.' 
-                : 'Running in Local Storage demo mode. Pick a role to explore.'}
+            <p className="sub" style={{ marginBottom: '20px' }}>
+              Sign in to access your secure care route and packet workspace.
             </p>
+
+            {!isFirebaseMode && (
+              <Notice variant="brand" className="mb-4">
+                <strong>Demo Local Mode Active:</strong> You can enter any mock email (e.g. <code>user@user.com</code>, <code>doc@doc.com</code>, <code>admin@admin.com</code>) to simulate a sign-in.
+              </Notice>
+            )}
 
             {error && (
               <div style={{ padding: '12px', background: 'oklch(92% 0.04 20)', border: '1px solid oklch(80% 0.08 20)', borderRadius: 'var(--r-md)', fontSize: '13px', color: 'oklch(40% 0.12 20)', marginBottom: '14px' }}>
@@ -197,34 +129,13 @@ export default function SignInPage() {
               </div>
             )}
 
-            <span className="kicker" style={{ display: 'block', marginBottom: '10px' }}>Demo Quick Access</span>
-            <div className="demo-grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', marginBottom: '22px' }}>
-              {DEMO_ACCOUNTS.map((demo) => {
-                const DemoIcon = demo.icon;
-                return (
-                  <button
-                    key={demo.id}
-                    onClick={() => handleDemoSignIn(demo.email)}
-                    disabled={loading}
-                    className="demo-card"
-                    style={{ textAlign: 'left', padding: '14px' }}
-                  >
-                    <div className="ico" style={{ marginBottom: '8px' }}>
-                      <DemoIcon className="w-4 h-4 text-wise-teal-deep" />
-                    </div>
-                    <div className="role-name" style={{ fontWeight: 600, fontSize: '13.5px' }}>{demo.title}</div>
-                    <div className="role-sub" style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '2px' }}>{demo.description}</div>
-                  </button>
-                );
-              })}
-            </div>
-
+            {/* Google Sign-in Button at the Top */}
             <button 
               type="button" 
               onClick={handleGoogleSignIn} 
               disabled={loading}
               className="btn btn-soft btn-lg" 
-              style={{ width: '100%', justifyContent: 'center', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}
+              style={{ width: '100%', justifyContent: 'center', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}
             >
               <svg className="w-4 h-4 mr-1 shrink-0" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -235,13 +146,14 @@ export default function SignInPage() {
               Continue with Google
             </button>
 
-            <div className="or-line" style={{ margin: '18px 0', fontSize: '11px', color: 'var(--muted-2)', letterSpacing: '0.12em', textAlign: 'center', position: 'relative' }}>
-              OR USE EMAIL CREDENTIALS
+            <div className="or-line" style={{ margin: '20px 0', fontSize: '11px', color: 'var(--muted-2)', letterSpacing: '0.12em', textAlign: 'center', position: 'relative' }}>
+              OR SIGN IN WITH EMAIL
             </div>
 
+            {/* Email Form fields */}
             <form className="form-fields" onSubmit={handleSubmit}>
               <div className="field">
-                <label className="field-label" htmlFor="email">Email</label>
+                <label className="field-label" htmlFor="email">Email Address</label>
                 <input 
                   className="input" 
                   id="email" 
