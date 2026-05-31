@@ -3,6 +3,7 @@ import {
   setDoc, 
   getDoc, 
   updateDoc, 
+  deleteDoc,
   collection, 
   query, 
   where, 
@@ -64,6 +65,30 @@ export const firestoreHelpers = {
       role,
       updatedAt: serverTimestamp(),
     });
+  },
+
+  updateUserDisabled: async (uid: string, disabled: boolean): Promise<void> => {
+    if (!isFirebaseConfigured || !db) return;
+    await updateDoc(doc(db, 'users', uid), {
+      disabled,
+      updatedAt: serverTimestamp(),
+    });
+  },
+
+  deleteUserAccount: async (uid: string, role: string): Promise<void> => {
+    if (!isFirebaseConfigured || !db) return;
+    
+    // 1. Delete matching role-specific profile document
+    if (role === 'patient') {
+      await deleteDoc(doc(db, 'patients', uid));
+    } else if (role === 'solo_provider') {
+      await deleteDoc(doc(db, 'soloProviders', uid));
+    } else if (role === 'provider_org') {
+      await deleteDoc(doc(db, 'providerOrganizations', uid));
+    }
+
+    // 2. Delete the primary users record
+    await deleteDoc(doc(db, 'users', uid));
   },
 
   // --- Patient Profile helpers ---

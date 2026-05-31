@@ -67,7 +67,10 @@ export interface Referral {
   status?: 'accepted' | 'declined' | 'waitlisted' | 'pending' | 'request_info' | 'withdrawn';
   providerId?: string;
   providerName?: string;
+  createdAt?: any;
+  updatedAt?: any;
 }
+
 
 export interface CarePacket {
   mainConcerns: string[];

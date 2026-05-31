@@ -14,6 +14,7 @@ interface AccountRecord {
   displayName: string;
   role: 'patient' | 'provider_org' | 'solo_provider' | 'admin';
   onboardingComplete: boolean;
+  disabled?: boolean;
   extraInfo?: string;
 }
 
@@ -58,6 +59,7 @@ function AdminAccountsContent() {
             displayName: u.displayName || 'Unnamed User',
             role: u.role,
             onboardingComplete: u.onboardingComplete,
+            disabled: u.disabled || false,
             extraInfo,
           };
         });
@@ -67,15 +69,16 @@ function AdminAccountsContent() {
         let storedUsers = storage.getStorageItem<AccountRecord[]>('wisecare.demoUsers', []);
         if (storedUsers.length === 0) {
           storedUsers = [
-            { uid: 'u1', email: 'user@user.com', displayName: 'User Patient', role: 'patient', onboardingComplete: true, extraInfo: 'Patient care route and packets managed securely' },
-            { uid: 'u2', email: 'doc@doc.com', displayName: 'Dr. Jane Smith, Psy.D.', role: 'solo_provider', onboardingComplete: true, extraInfo: 'License: Psy.D. (California #90123)' },
-            { uid: 'u3', email: 'clinic@clinic.com', displayName: 'Quietford Practice Group', role: 'provider_org', onboardingComplete: true, extraInfo: 'Clinic: Quietford Counseling (group practice)' },
-            { uid: 'u4', email: 'admin@admin.com', displayName: 'System Admin', role: 'admin', onboardingComplete: true, extraInfo: 'Platform Operations Administrator' },
-            { uid: 'u5', email: 'lielina@gmail.com', displayName: 'Lielina Haile', role: 'patient', onboardingComplete: true, extraInfo: 'Patient care route and packets managed securely' },
+            { uid: 'u1', email: 'user@user.com', displayName: 'User Patient', role: 'patient', onboardingComplete: true, disabled: false, extraInfo: 'Patient care route and packets managed securely' },
+            { uid: 'u2', email: 'doc@doc.com', displayName: 'Dr. Jane Smith, Psy.D.', role: 'solo_provider', onboardingComplete: true, disabled: false, extraInfo: 'License: Psy.D. (California #90123)' },
+            { uid: 'u3', email: 'clinic@clinic.com', displayName: 'Quietford Practice Group', role: 'provider_org', onboardingComplete: true, disabled: false, extraInfo: 'Clinic: Quietford Counseling (group practice)' },
+            { uid: 'u4', email: 'admin@admin.com', displayName: 'System Admin', role: 'admin', onboardingComplete: true, disabled: false, extraInfo: 'Platform Operations Administrator' },
+            { uid: 'u5', email: 'lielina@gmail.com', displayName: 'Lielina Haile', role: 'patient', onboardingComplete: true, disabled: false, extraInfo: 'Patient care route and packets managed securely' },
           ];
           storage.setStorageItem('wisecare.demoUsers', storedUsers);
         }
-        setUsers(storedUsers);
+        const normalized = storedUsers.map(su => ({ ...su, disabled: su.disabled || false }));
+        setUsers(normalized);
       }
     } catch (e) {
       console.error('Error loading account database:', e);
@@ -106,6 +109,55 @@ function AdminAccountsContent() {
       alert(`Error updating role: ${err.message || 'Operation failed'}`);
     }
   };
+
+  const handleToggleDeactivate = async (uid: string, currentDisabled: boolean, email: string) => {
+    const actionWord = currentDisabled ? 'reactivate' : 'deactivate';
+    const ok = window.confirm(`Are you sure you want to ${actionWord} the account ${email}?`);
+    if (!ok) return;
+
+    try {
+      if (isFirebaseMode) {
+        await firestoreHelpers.updateUserDisabled(uid, !currentDisabled);
+      } else {
+        const updated = users.map(u => u.uid === uid ? { ...u, disabled: !currentDisabled } : u);
+        storage.setStorageItem('wisecare.demoUsers', updated);
+      }
+      setSuccessMessage(`Account ${email} successfully ${currentDisabled ? 'reactivated' : 'deactivated'}`);
+      setTimeout(() => setSuccessMessage(null), 4000);
+      loadAccounts();
+    } catch (err: any) {
+      alert(`Error updating account status: ${err.message || 'Operation failed'}`);
+    }
+  };
+
+  const handleDeleteAccount = async (uid: string, email: string, role: string) => {
+    const ok = window.confirm(`WARNING: Are you sure you want to PERMANENTLY DELETE the account ${email}? This will delete all associated Firestore documents and Firebase Auth credentials.`);
+    if (!ok) return;
+
+    try {
+      if (isFirebaseMode) {
+        // Delete user (both Auth and Firestore) via server-side API to prevent half-deleted states
+        const res = await fetch('/api/admin/delete-user', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ uid }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'Failed to delete user account.');
+        }
+      } else {
+        const updated = users.filter(u => u.uid !== uid);
+        storage.setStorageItem('wisecare.demoUsers', updated);
+      }
+      setSuccessMessage(`Account ${email} successfully deleted`);
+      setTimeout(() => setSuccessMessage(null), 4000);
+      loadAccounts();
+    } catch (err: any) {
+      alert(`Error deleting account: ${err.message || 'Operation failed'}`);
+    }
+  };
+
 
   const getRoleBadge = (role: AccountRecord['role']) => {
     switch (role) {
@@ -215,7 +267,18 @@ function AdminAccountsContent() {
                     >
                       {/* User Details */}
                       <td style={{ padding: '14px 18px' }}>
-                        <div style={{ fontWeight: 600, color: 'var(--fg)' }}>{u.displayName}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <div style={{ 
+                            fontWeight: 600, 
+                            color: u.disabled ? 'var(--muted)' : 'var(--fg)',
+                            textDecoration: u.disabled ? 'line-through' : 'none' 
+                          }}>
+                            {u.displayName}
+                          </div>
+                          {u.disabled && (
+                            <span className="badge danger" style={{ fontSize: '9.5px', padding: '2px 6px' }}>Deactivated</span>
+                          )}
+                        </div>
                         <div style={{ fontSize: '12.5px', color: 'var(--muted)', marginTop: '2px' }}>{u.email}</div>
                         {u.extraInfo && (
                           <div style={{ fontSize: '11px', color: 'var(--teal-deep)', marginTop: '4px', background: 'var(--teal-soft)', padding: '2px 8px', borderRadius: '4px', display: 'inline-block' }}>
@@ -249,7 +312,7 @@ function AdminAccountsContent() {
 
                       {/* Role Action */}
                       <td style={{ padding: '14px 18px', textAlign: 'right' }}>
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                           <span style={{ fontSize: '12.5px', color: 'var(--muted)' }}>Switch to:</span>
                           <select
                             value={u.role}
@@ -262,6 +325,29 @@ function AdminAccountsContent() {
                             <option value="provider_org">Clinic / Org</option>
                             <option value="admin">🔒 Admin</option>
                           </select>
+
+                          <button
+                            type="button"
+                            onClick={() => handleToggleDeactivate(u.uid, u.disabled || false, u.email)}
+                            className={`btn btn-sm ${u.disabled ? 'btn-soft' : 'btn-ghost'}`}
+                            style={{ 
+                              fontSize: '12.5px', 
+                              padding: '5px 12px',
+                              borderColor: u.disabled ? 'oklch(70% 0.13 78 / 0.32)' : 'var(--border)', 
+                              color: u.disabled ? 'oklch(48% 0.13 78)' : 'var(--fg-soft)' 
+                            }}
+                          >
+                            {u.disabled ? 'Reactivate' : 'Deactivate'}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteAccount(u.uid, u.email, u.role)}
+                            className="btn btn-danger btn-sm"
+                            style={{ fontSize: '12.5px', padding: '5px 12px' }}
+                          >
+                            Delete
+                          </button>
                         </div>
                       </td>
                     </tr>

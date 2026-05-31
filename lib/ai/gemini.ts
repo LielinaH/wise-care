@@ -384,3 +384,75 @@ function getFallbackFollowUp(
     isFallback: true,
   };
 }
+
+/**
+ * Enhances raw availability hours into a clean, professional description using Gemini.
+ */
+export async function enhanceAvailabilityHours(rawHours: string): Promise<string> {
+  const trimmed = rawHours.trim();
+  if (!trimmed) return 'Accepting new clients';
+
+  if (!ai) {
+    console.warn('GEMINI_API_KEY is not set. Using fallback availability hour cleanup.');
+    return getFallbackAvailabilityHours(trimmed);
+  }
+
+  try {
+    const systemPrompt = `You are an AI assistant for a professional healthcare and care navigation platform.
+The user (a clinic or an individual clinician) has typed their available hours in a casual, short, or typo-prone format.
+Your task is to reformat their input into a clear, professional, well-formatted availability summary suitable for a public healthcare directory.
+
+Examples:
+- "9to5 monday to firday" -> "Monday - Friday: 9:00 AM - 5:00 PM"
+- "anytime anytime" -> "Flexible / Open Availability"
+- "weekends only" -> "Saturday & Sunday: Flexible hours"
+- "tue wed 5 to 8pm" -> "Tuesday & Wednesday: 5:00 PM - 8:00 PM"
+- "m-f morning" -> "Monday - Friday: Mornings"
+- "by appointment" -> "By Appointment Only"
+
+Return ONLY the enhanced, clean, professional availability description. Do not include quotes, conversational filler, markdown formatting (like bolding), or explanation. Just the text.`;
+
+    const response = await ai.models.generateContent({
+      model: modelName,
+      contents: `Raw text: "${trimmed}"`,
+      config: {
+        systemInstruction: systemPrompt,
+      },
+    });
+
+    if (!response.text) {
+      throw new Error('Empty response from Gemini');
+    }
+
+    return response.text.trim().replace(/^"(.*)"$/, '$1'); // clean quotes if any
+  } catch (error) {
+    console.error('Error enhancing availability hours with Gemini:', error);
+    return getFallbackAvailabilityHours(trimmed);
+  }
+}
+
+function getFallbackAvailabilityHours(rawHours: string): string {
+  const normalized = rawHours.toLowerCase();
+  if (normalized.includes('anytime') || normalized.includes('any time') || normalized.includes('24/7') || normalized.includes('always')) {
+    return 'Flexible / Open Availability';
+  }
+  if (normalized.includes('9to5') || normalized.includes('9 to 5') || normalized.includes('9-5')) {
+    let days = 'Monday - Friday';
+    if (normalized.includes('mon') && normalized.includes('sat')) days = 'Monday - Saturday';
+    return `${days}: 9:00 AM - 5:00 PM`;
+  }
+  if (normalized.includes('9to6') || normalized.includes('9 to 6') || normalized.includes('9-6')) {
+    return 'Monday - Friday: 9:00 AM - 6:00 PM';
+  }
+  if (normalized.includes('weekend')) {
+    return 'Saturday & Sunday: Flexible Availability';
+  }
+  if (normalized.includes('evening')) {
+    return 'Weekday evenings: 5:00 PM - 8:00 PM';
+  }
+  if (normalized.includes('morning')) {
+    return 'Weekday mornings: 8:00 AM - 12:00 PM';
+  }
+  // Default fallback: Capitalize the first letter
+  return rawHours.charAt(0).toUpperCase() + rawHours.slice(1);
+}

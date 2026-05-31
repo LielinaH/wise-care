@@ -24,8 +24,30 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
       return;
     }
 
+    // 1.2 If account is deactivated, redirect to /auth/deactivated Notice Page
+    if (userProfile && userProfile.disabled && pathname !== '/auth/deactivated') {
+      router.push('/auth/deactivated');
+      return;
+    }
+
+    // 1.3 If account is active but on /auth/deactivated, redirect to default role home
+    if (userProfile && !userProfile.disabled && pathname === '/auth/deactivated') {
+      const targetHome = 
+        role === 'patient' 
+          ? '/dashboard' 
+          : role === 'provider_org' 
+            ? '/provider/org/dashboard' 
+            : role === 'solo_provider' 
+              ? '/provider/solo/dashboard' 
+              : role === 'admin' 
+                ? '/admin/dashboard' 
+                : '/dashboard';
+      router.push(targetHome);
+      return;
+    }
+
     // 1b. If authenticated but no Firestore user profile exists, redirect to onboarding to select a role
-    if (currentUser && !userProfile && pathname !== '/auth/onboarding') {
+    if (currentUser && !userProfile && pathname !== '/auth/onboarding' && pathname !== '/auth/deactivated') {
       router.push('/auth/onboarding');
       return;
     }
@@ -80,6 +102,12 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
 
   // Double check if page needs rendering or redirecting
   if (!currentUser) return null;
+  
+  if (userProfile && userProfile.disabled) {
+    if (pathname === '/auth/deactivated') return <>{children}</>;
+    return null;
+  }
+
   if (!userProfile && pathname !== '/auth/onboarding') return null;
   if (userProfile && !userProfile.onboardingComplete && pathname !== '/auth/onboarding') return null;
   if (allowedRoles && role && !allowedRoles.includes(role)) return null;

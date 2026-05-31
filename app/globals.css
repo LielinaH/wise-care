@@ -2196,6 +2196,22 @@ input[type="range"].slider::-moz-range-thumb {
 .av-toggle:not(.on) .switch { background: var(--surface-sunk); }
 .av-toggle:not(.on) .switch::after { left: 2px; right: auto; }
 
+.av-toggle.disabled {
+  opacity: 0.55;
+  cursor: not-allowed !important;
+  background: var(--surface-sunk) !important;
+  border-color: var(--hairline) !important;
+  pointer-events: none;
+}
+.av-toggle.disabled .switch {
+  background: var(--border) !important;
+}
+.av-toggle.disabled .switch::after {
+  background: var(--muted) !important;
+  left: 2px !important;
+  right: auto !important;
+}
+
 .ref-row {
   display: grid;
   grid-template-columns: auto 1fr auto auto;

@@ -50,8 +50,8 @@ function ProviderMatchingPageContent() {
           
           const dbProviders: Provider[] = [];
           solo.forEach(s => {
-            // Only show verified providers
-            if (s.verificationStatus === 'verified') {
+            // Only show verified providers who are accepting new clients
+            if (s.verificationStatus === 'verified' && s.availability !== 'No availability') {
               dbProviders.push({
                 id: s.userId,
                 name: s.displayName,
@@ -70,8 +70,8 @@ function ProviderMatchingPageContent() {
           });
 
           org.forEach(o => {
-            // Only show verified organization clinics
-            if (o.verificationStatus === 'verified') {
+            // Only show verified clinics who are open for matching
+            if (o.verificationStatus === 'verified' && o.availability !== 'No availability') {
               dbProviders.push({
                 id: o.orgId,
                 name: o.organizationName,

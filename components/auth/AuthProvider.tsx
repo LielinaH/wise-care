@@ -15,7 +15,7 @@ interface AuthContextType {
   role: 'patient' | 'provider_org' | 'solo_provider' | 'admin' | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<UserCredential | any>;
-  register: (email: string, password: string) => Promise<UserCredential | any>;
+  register: (email: string, password: string, role?: 'patient' | 'provider_org' | 'solo_provider' | 'admin') => Promise<UserCredential | any>;
   signInWithGoogle: () => Promise<UserCredential | any>;
   signOut: () => Promise<void>;
   isFirebaseMode: boolean;
@@ -159,10 +159,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return authActions.signIn(email, password);
   };
 
-  const register = async (email: string, password: string) => {
+  const register = async (email: string, password: string, selectedRole?: 'patient' | 'provider_org' | 'solo_provider' | 'admin') => {
     if (!isFirebaseMode) {
+      const roleChoice = selectedRole || 'patient';
+      storage.setRole(roleChoice);
       const user = { uid: 'demo-local-uid', email, displayName: 'Demo Account' };
       setCurrentUser(user);
+      setUserProfile({
+        uid: 'demo-local-uid',
+        email,
+        displayName: 'Demo Account',
+        role: roleChoice,
+        onboardingComplete: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+      setRole(roleChoice);
       return { user };
     }
     return authActions.register(email, password);

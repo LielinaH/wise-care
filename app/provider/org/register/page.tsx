@@ -24,6 +24,7 @@ function OrgProviderRegisterContent() {
   const [selectedInsurances, setSelectedInsurances] = useState<string[]>([]);
   const [modality, setModality] = useState<'Telehealth' | 'In-person' | 'Both'>('Both');
   const [hours, setHours] = useState('Accepting new clients');
+  const [isEnhancing, setIsEnhancing] = useState(false);
   const [services, setServices] = useState<string[]>([]);
   const [verificationStatus, setVerificationStatus] = useState<'draft' | 'pending' | 'verified' | 'rejected'>('draft');
 
@@ -308,13 +309,49 @@ function OrgProviderRegisterContent() {
                 </div>
                 <div className="field">
                   <label className="field-label">Available hours description</label>
-                  <input 
-                    className="input" 
-                    type="text" 
-                    value={hours} 
-                    onChange={e => setHours(e.target.value)}
-                    placeholder="e.g. Weekday evenings · 5-8pm"
-                  />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-start' }}>
+                    <input 
+                      className="input" 
+                      type="text" 
+                      style={{ width: '100%' }}
+                      value={hours} 
+                      onChange={e => setHours(e.target.value)}
+                      placeholder="e.g. Weekday evenings · 5-8pm"
+                    />
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!hours.trim()) return;
+                        setIsEnhancing(true);
+                        try {
+                          const res = await fetch('/api/ai/enhance-hours', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ rawHours: hours }),
+                          });
+                          const data = await res.json();
+                          if (data.enhanced) {
+                            setHours(data.enhanced);
+                          }
+                        } catch (err) {
+                          console.error("Failed to enhance availability:", err);
+                        } finally {
+                          setIsEnhancing(false);
+                        }
+                      }}
+                      disabled={isEnhancing || !hours.trim()}
+                      className="btn btn-soft"
+                    >
+                      {isEnhancing ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" style={{ animation: 'spin 1s linear infinite' }} />
+                          <span>Cleaning...</span>
+                        </>
+                      ) : (
+                        '✨ AI Enhance'
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

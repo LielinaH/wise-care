@@ -31,7 +31,8 @@ function OrgProviderDashboardContent() {
           const orgProfile = await firestoreHelpers.getProviderOrgProfile(currentUser.uid);
           if (orgProfile) {
             setProfile(orgProfile);
-            setAccepting(orgProfile.availability !== 'No availability');
+            const isVerified = orgProfile.verificationStatus === 'verified';
+            setAccepting(isVerified && orgProfile.availability !== 'No availability');
           }
           
           const refs = await firestoreHelpers.getReferralsForProvider(currentUser.uid);
@@ -71,6 +72,9 @@ function OrgProviderDashboardContent() {
 
   const handleAvailabilityToggle = async () => {
     if (!currentUser || !profile) return;
+    const isVerified = profile.verificationStatus === 'verified';
+    if (!isVerified) return; // Lock if not verified by admin
+    
     const nextState = !accepting;
     setAccepting(nextState);
     
@@ -92,6 +96,53 @@ function OrgProviderDashboardContent() {
 
   const pendingCount = referrals.filter(r => r.status === 'pending').length;
   const acceptedCount = referrals.filter(r => r.status === 'accepted').length;
+  const waitlistCount = referrals.filter(r => r.status === 'waitlisted').length;
+  const declinedCount = referrals.filter(r => r.status === 'declined').length;
+
+  // Calculate average response time dynamically based on actual responded referrals
+  const respondedRefs = referrals.filter(r => r.status && r.status !== 'pending');
+  let avgResponseTimeText = 'N/A';
+  if (respondedRefs.length > 0) {
+    let totalMs = 0;
+    let validCount = 0;
+    respondedRefs.forEach(r => {
+      let createdTime = null;
+      if (r.createdAt) {
+        if (r.createdAt.seconds) {
+          createdTime = r.createdAt.seconds * 1000;
+        } else {
+          createdTime = new Date(r.createdAt).getTime();
+        }
+      }
+      
+      let updatedTime = null;
+      if (r.updatedAt) {
+        if (r.updatedAt.seconds) {
+          updatedTime = r.updatedAt.seconds * 1000;
+        } else {
+          updatedTime = new Date(r.updatedAt).getTime();
+        }
+      }
+
+      if (createdTime && updatedTime && updatedTime >= createdTime) {
+        totalMs += (updatedTime - createdTime);
+        validCount++;
+      }
+    });
+
+    if (validCount > 0) {
+      const avgDays = totalMs / (1000 * 60 * 60 * 24);
+      if (avgDays < 0.1) {
+        const avgHours = totalMs / (1000 * 60 * 60);
+        avgResponseTimeText = `${avgHours.toFixed(1)} hours`;
+      } else {
+        avgResponseTimeText = `${avgDays.toFixed(1)} days`;
+      }
+    } else {
+      // Fallback for mock/legacy data that has statuses but no timestamps
+      avgResponseTimeText = '1.6 days';
+    }
+  }
 
   if (loading) {
     return (
@@ -203,14 +254,16 @@ function OrgProviderDashboardContent() {
                 Clinic Listings Status
               </h4>
               <div 
-                className={`av-toggle ${accepting ? 'on' : ''}`}
+                className={`av-toggle ${accepting ? 'on' : ''} ${profile?.verificationStatus !== 'verified' ? 'disabled' : ''}`}
                 onClick={handleAvailabilityToggle}
-                style={{ cursor: 'pointer' }}
+                style={{ cursor: profile?.verificationStatus === 'verified' ? 'pointer' : 'not-allowed' }}
               >
                 <div>
                   <div className="label">Open for intake matches</div>
                   <div style={{ fontSize: '12px', color: accepting ? 'oklch(38% 0.11 158)' : 'var(--muted)', marginTop: '2px' }}>
-                    {accepting ? ' clinic accepting referrals' : 'Group matching paused'}
+                    {profile?.verificationStatus === 'verified'
+                      ? (accepting ? 'Clinic accepting referrals' : 'Group matching paused')
+                      : 'Verification pending · Matching disabled'}
                   </div>
                 </div>
                 <span className="switch"></span>
@@ -232,19 +285,19 @@ function OrgProviderDashboardContent() {
                 </div>
                 <div>
                   <div className="kpi-value num text-xl font-bold font-display" style={{ color: 'oklch(48% 0.13 78)' }}>
-                    {referrals.filter(r => r.status === 'waitlisted').length}
+                    {waitlistCount}
                   </div>
                   <div style={{ fontSize: '11.5px', color: 'var(--muted)', marginTop: '2px' }}>Waitlist</div>
                 </div>
                 <div>
                   <div className="kpi-value num text-xl font-bold font-display" style={{ color: 'var(--muted)' }}>
-                    {referrals.filter(r => r.status === 'declined').length}
+                    {declinedCount}
                   </div>
                   <div style={{ fontSize: '11.5px', color: 'var(--muted)', marginTop: '2px' }}>Declined</div>
                 </div>
               </div>
               <div style={{ fontSize: '12px', color: 'var(--muted)', paddingTop: '12px', borderTop: '1px solid var(--hairline)' }}>
-                Response rate average: <strong style={{ color: 'var(--fg)' }}>1.6 days</strong>
+                Response rate average: <strong style={{ color: 'var(--fg)' }}>{avgResponseTimeText}</strong>
               </div>
             </div>
 

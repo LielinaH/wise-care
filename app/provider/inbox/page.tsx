@@ -83,7 +83,12 @@ function ProviderInboxContent() {
     } else {
       const updated = referrals.map(ref => {
         if (ref.id === id) {
-          return { ...ref, status: nextStatus } as Referral;
+          return { 
+            ...ref, 
+            status: nextStatus,
+            updatedAt: new Date().toISOString(),
+            createdAt: ref.createdAt || new Date(Date.now() - 3600000 * 12).toISOString() // fallback to 12 hours ago if missing
+          } as Referral;
         }
         return ref;
       });

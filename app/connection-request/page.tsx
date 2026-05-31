@@ -200,6 +200,8 @@ function ConnectionRequestContent() {
           status: 'pending',
           providerId: provider.id,
           providerName: provider.name,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         };
 
         storage.setReferrals([newReferral, ...listToUpdate]);

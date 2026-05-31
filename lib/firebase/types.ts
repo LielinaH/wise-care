@@ -4,6 +4,7 @@ export interface UserRecord {
   displayName: string;
   role: 'patient' | 'provider_org' | 'solo_provider' | 'admin';
   onboardingComplete: boolean;
+  disabled?: boolean;
   createdAt: any;
   updatedAt: any;
 }

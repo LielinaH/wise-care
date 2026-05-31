@@ -28,6 +28,7 @@ export default function OnboardingPage() {
   const [selectedSpecs, setSelectedSpecs] = useState<string[]>([]);
   const [modality, setModality] = useState<'Telehealth' | 'In-person' | 'Both'>('Telehealth');
   const [availability, setAvailability] = useState('Weekday evenings');
+  const [isEnhancing, setIsEnhancing] = useState(false);
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -469,15 +470,51 @@ export default function OnboardingPage() {
 
                 <div className="field">
                   <label className="field-label" htmlFor="availability">Hours Available</label>
-                  <input
-                    className="input"
-                    id="availability"
-                    type="text"
-                    placeholder="e.g. Tue/Wed evenings · 5-8pm"
-                    value={availability}
-                    onChange={e => setAvailability(e.target.value)}
-                    required
-                  />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-start' }}>
+                    <input
+                      className="input"
+                      id="availability"
+                      type="text"
+                      placeholder="e.g. Tue/Wed evenings · 5-8pm"
+                      style={{ width: '100%' }}
+                      value={availability}
+                      onChange={e => setAvailability(e.target.value)}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!availability.trim()) return;
+                        setIsEnhancing(true);
+                        try {
+                          const res = await fetch('/api/ai/enhance-hours', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ rawHours: availability }),
+                          });
+                          const data = await res.json();
+                          if (data.enhanced) {
+                            setAvailability(data.enhanced);
+                          }
+                        } catch (err) {
+                          console.error("Failed to enhance availability:", err);
+                        } finally {
+                          setIsEnhancing(false);
+                        }
+                      }}
+                      disabled={isEnhancing || !availability.trim()}
+                      className="btn btn-soft"
+                    >
+                      {isEnhancing ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" style={{ animation: 'spin 1s linear infinite' }} />
+                          <span>Cleaning...</span>
+                        </>
+                      ) : (
+                        '✨ AI Enhance'
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
             </>
@@ -486,7 +523,12 @@ export default function OnboardingPage() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '18px', borderTop: '1px solid var(--hairline)', marginTop: '22px' }}>
             <button
               type="button"
-              onClick={() => signOut()}
+              onClick={async () => {
+                router.push('/');
+                setTimeout(async () => {
+                  await signOut();
+                }, 150);
+              }}
               className="btn btn-ghost"
             >
               Sign out

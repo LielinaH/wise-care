@@ -38,7 +38,7 @@ export default function RegisterPage() {
     setError(null);
 
     try {
-      const res = await register(email, password);
+      const res = await register(email, password, role);
       
       if (isFirebaseMode && res.user) {
         // Automatically determine role from email domain/prefix for ease of dev testing

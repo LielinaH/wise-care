@@ -111,8 +111,10 @@ export default function AppShell({ children, title, crumbs = [], actions }: AppS
 
   const handleSignOut = async () => {
     try {
-      await signOut();
-      router.push('/auth/signin');
+      router.push('/');
+      setTimeout(async () => {
+        await signOut();
+      }, 150);
     } catch (e) {
       console.error('Logout failed: ', e);
     }
