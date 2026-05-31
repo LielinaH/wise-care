@@ -2,7 +2,8 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, User, UserCredential } from 'firebase/auth';
-import { auth, isFirebaseConfigured } from '@/lib/firebase/client';
+import { auth, db, isFirebaseConfigured } from '@/lib/firebase/client';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { firestoreHelpers } from '@/lib/firebase/firestore';
 import { authActions } from '@/lib/firebase/auth';
 import { UserRecord } from '@/lib/firebase/types';
@@ -79,30 +80,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    let unsubscribeProfile: (() => void) | null = null;
+
+    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+      // Clean up previous profile listener if any
+      if (unsubscribeProfile) {
+        unsubscribeProfile();
+        unsubscribeProfile = null;
+      }
+
       if (user) {
         setCurrentUser(user);
-        try {
-          const profile = await firestoreHelpers.getUserProfile(user.uid);
-          if (profile) {
-            setUserProfile(profile);
-            setRole(profile.role);
-          } else {
-            setUserProfile(null);
-            setRole(null);
-          }
-        } catch (e) {
-          console.error("Error loading user profile: ", e);
+        
+        // Listen to profile in real-time
+        if (db) {
+          unsubscribeProfile = onSnapshot(
+            doc(db, 'users', user.uid),
+            (snap) => {
+              if (snap.exists()) {
+                const profile = snap.data() as UserRecord;
+                setUserProfile(profile);
+                setRole(profile.role);
+              } else {
+                setUserProfile(null);
+                setRole(null);
+              }
+              setLoading(false);
+            },
+            (err) => {
+              console.error("Error reading user profile snapshot:", err);
+              setLoading(false);
+            }
+          );
+        } else {
+          setLoading(false);
         }
       } else {
         setCurrentUser(null);
         setUserProfile(null);
         setRole(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeProfile) {
+        unsubscribeProfile();
+      }
+    };
   }, [isFirebaseMode]);
 
   const signIn = async (email: string, password: string) => {
