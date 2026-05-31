@@ -141,13 +141,11 @@ img, svg { display: block; max-width: 100%; }
 
 .brand-mark {
   width: 32px; height: 32px;
-  border-radius: 10px;
   background-image: url('/logo.png');
-  background-size: cover;
+  background-size: contain;
+  background-repeat: no-repeat;
   background-position: center;
-  box-shadow: var(--sh-1);
   position: relative;
-  overflow: hidden;
 }
 .brand-mark::after {
   content: '';

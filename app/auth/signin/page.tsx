@@ -73,18 +73,18 @@ export default function SignInPage() {
           
           {/* Logo inside card */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '24px' }}>
-            <Link href="/" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
-              <div className="brand-mark"></div>
-              <div className="brand-word" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+            <Link href="/" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+              <div className="brand-mark" style={{ width: '64px', height: '64px' }}></div>
+              <div className="brand-word" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', fontSize: '1.3rem' }}>
                 Wise Care
-                <small>Care Navigation</small>
+                <small style={{ fontSize: '10px', marginTop: '3px' }}>Care Navigation</small>
               </div>
             </Link>
           </div>
 
           <h2>Sign in to Wise Care</h2>
           <p className="sub" style={{ marginBottom: '20px' }}>
-            Sign in to access your secure care route and packet workspace.
+            Your secure space for professional care navigation, resource matching, and mental health support.
           </p>
 
           {!isFirebaseMode && (
