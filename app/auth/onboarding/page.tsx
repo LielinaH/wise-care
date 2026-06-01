@@ -35,8 +35,15 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     if (currentUser) {
-      setDisplayName(currentUser.displayName || '');
-      setOrgName(currentUser.displayName || '');
+      const initialName = currentUser.displayName && 
+        currentUser.displayName !== 'Org' && 
+        currentUser.displayName !== 'Clinic' && 
+        currentUser.displayName !== 'Solo' && 
+        currentUser.displayName !== 'Patient'
+          ? currentUser.displayName 
+          : '';
+      setDisplayName(initialName);
+      setOrgName(initialName);
     }
   }, [currentUser]);
 
@@ -190,52 +197,98 @@ export default function OnboardingPage() {
           // Create solo provider profile
           await firestoreHelpers.setSoloProviderProfile(uid, {
             userId: uid,
-            displayName: displayName.trim(),
-            licenseType,
-            licenseState,
-            licenseNumberPlaceholder: licenseNumber.trim(),
-            specialties: selectedSpecs,
-            modalities: modality === 'Both' ? ['Telehealth', 'In-person'] : [modality],
-            availability,
-            coverageOptions: [],
-            verificationStatus: 'pending',
-          });
-
-          // Create verification request
-          await firestoreHelpers.createVerificationRequest({
-            providerType: 'solo_provider',
-            providerId: uid,
-            submittedBy: currentUser.email || '',
-            status: 'pending',
-            notes: 'Onboarding license registration',
-            createdAt: null,
-            updatedAt: null,
+            profile: {
+              displayName: displayName.trim(),
+              providerTitle: licenseType,
+              bio: 'Care navigation provider.',
+              profilePhoto: null,
+              contactEmail: currentUser.email || '',
+              contactPhone: '',
+            },
+            licensure: {
+              licenseType,
+              licenseNumberPlaceholder: licenseNumber.trim(),
+              licenseState,
+              licenseExpirationDate: '',
+              licenseDocument: null,
+              npiPlaceholder: '',
+              telehealthStates: [licenseState],
+            },
+            careDetails: {
+              specialties: selectedSpecs,
+              modalities: modality === 'Both' ? ['Telehealth', 'In-person'] : [modality],
+              acceptedCoverageOptions: [],
+              selfPayRate: '',
+              slidingScaleAvailable: false,
+              languages: ['English'],
+              availability,
+            },
+            references: {
+              reference1Name: '',
+              reference1Relationship: '',
+              reference1Email: '',
+              reference1Status: 'not_sent',
+              reference2Name: '',
+              reference2Relationship: '',
+              reference2Email: '',
+              reference2Status: 'not_sent',
+            },
+            verification: {
+              verificationStatus: 'pending',
+              submittedAt: new Date().toISOString(),
+              adminNotes: '',
+              itemStatuses: {},
+              itemNotes: {},
+            },
           });
         } else if (role === 'provider_org') {
           // Create clinic profile
           await firestoreHelpers.setProviderOrgProfile(uid, {
             orgId: uid,
             ownerUserId: uid,
-            organizationName: orgName.trim(),
-            organizationType: orgType,
-            services: [],
-            specialties: selectedSpecs,
-            modalities: modality === 'Both' ? ['Telehealth', 'In-person'] : [modality],
-            coverageOptions: [],
-            locations: [],
-            availability,
-            verificationStatus: 'pending',
-          });
-
-          // Create verification request
-          await firestoreHelpers.createVerificationRequest({
-            providerType: 'provider_org',
-            providerId: uid,
-            submittedBy: currentUser.email || '',
-            status: 'pending',
-            notes: 'Onboarding clinic registration',
-            createdAt: null,
-            updatedAt: null,
+            organizationProfile: {
+              organizationName: orgName.trim(),
+              organizationType: orgType,
+              organizationBio: 'Clinic/facility provider.',
+              logo: null,
+              primaryContactName: '',
+              primaryContactEmail: currentUser.email || '',
+              primaryContactPhone: '',
+              website: '',
+            },
+            credentialInfo: {
+              businessLicensePlaceholder: '',
+              licenseState: 'California',
+              accreditationPlaceholder: '',
+              credentialDocument: null,
+            },
+            serviceDetails: {
+              servicesOffered: [],
+              specialties: selectedSpecs,
+              modalities: modality === 'Both' ? ['Telehealth', 'In-person'] : [modality],
+              locations: ['California'],
+              acceptedCoverageOptions: [],
+              slidingScaleAvailable: false,
+              availability,
+              clinicianCount: 1,
+            },
+            references: {
+              reference1Name: '',
+              reference1Relationship: '',
+              reference1Email: '',
+              reference1Status: 'not_sent',
+              reference2Name: '',
+              reference2Relationship: '',
+              reference2Email: '',
+              reference2Status: 'not_sent',
+            },
+            verification: {
+              verificationStatus: 'pending',
+              submittedAt: new Date().toISOString(),
+              adminNotes: '',
+              itemStatuses: {},
+              itemNotes: {},
+            },
           });
         }
 

@@ -46,7 +46,7 @@ function AdminAccountsContent() {
           } else if (u.role === 'provider_org') {
             const orgProf = org.find(o => o.orgId === u.uid);
             if (orgProf) {
-              extraInfo = `Clinic: ${orgProf.organizationName} (${orgProf.organizationType.replace('_', ' ')})`;
+              extraInfo = `Clinic: ${orgProf.organizationName || 'Unnamed'} (${(orgProf.organizationType || '').replace('_', ' ')})`;
             } else {
               extraInfo = 'Awaiting clinic profile setup';
             }

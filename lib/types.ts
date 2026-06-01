@@ -69,6 +69,10 @@ export interface Referral {
   providerName?: string;
   createdAt?: any;
   updatedAt?: any;
+  appointmentDate?: string;
+  appointmentTimeSlot?: string;
+  appointmentType?: string;
+  appointmentNotes?: string;
 }
 
 
@@ -100,3 +104,53 @@ export interface FollowUpResult {
   encouragement: string;
   isFallback?: boolean;
 }
+
+export interface ChatMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  text: string;
+  createdAt: string; // ISO string or formatted for client view
+}
+
+export interface SupportPlanTask {
+  id: string;
+  title: string;
+  description: string;
+  category: 'preparation' | 'reflection' | 'sleep' | 'grounding' | 'outreach' | 'follow_up' | 'reading' | 'custom';
+  dueDate?: string;
+  completed: boolean;
+  completedAt?: string;
+  patientNote?: string;
+}
+
+export interface SupportPlanResource {
+  id: string;
+  title: string;
+  type: 'worksheet' | 'reading' | 'checklist' | 'sleep_log' | 'grounding_exercise' | 'external_link' | 'custom';
+  description: string;
+  url?: string;
+  content?: string;
+  demoOnly: boolean;
+}
+
+export interface SupportPlanDoc {
+  planId?: string;
+  patientId: string;
+  providerId: string;
+  providerType: 'solo_provider' | 'provider_org';
+  providerName: string;
+  referralId: string;
+  carePacketId: string;
+  title: string;
+  status: 'draft' | 'shared' | 'archived';
+  createdBy: string;
+  createdAt: any;
+  updatedAt: any;
+  sharedAt?: any;
+  providerNotes?: string;
+  patientProgressSummary?: string;
+  tasks: SupportPlanTask[];
+  resources: SupportPlanResource[];
+}
+

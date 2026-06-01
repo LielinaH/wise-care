@@ -20,7 +20,8 @@ import {
   X,
   LogOut,
   Info,
-  Users
+  Users,
+  ListTodo
 } from 'lucide-react';
 import { useAuth } from '@/components/auth/AuthProvider';
 import DemoRoleSwitcher from './DemoRoleSwitcher';
@@ -62,6 +63,7 @@ export default function AppShell({ children, title, crumbs = [], actions }: AppS
           { id: 'matching', label: 'Support options', href: '/matching', icon: Compass },
           { id: 'care-packet', label: 'Care packet', href: '/care-packet', icon: FileText },
           { id: 'connection-request', label: 'Connection requests', href: '/connection-request', icon: Send },
+          { id: 'support-plan', label: 'Support plan', href: '/support-plan', icon: ListTodo },
           { id: 'follow-up', label: 'Follow-up', href: '/follow-up', icon: CheckCircle },
         ],
       },

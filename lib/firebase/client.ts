@@ -16,6 +16,8 @@ export const isFirebaseConfigured = !!(
   process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
 );
 
+import { getStorage } from 'firebase/storage';
+
 // Prevent initializeApp from crashing the compilation if config is mock during SSR or initial setup
 let app;
 try {
@@ -26,4 +28,5 @@ try {
 
 export const auth = app ? getAuth(app) : (null as any);
 export const db = app ? getFirestore(app) : (null as any);
+export const firebaseStorage = app ? getStorage(app) : (null as any);
 export { app };

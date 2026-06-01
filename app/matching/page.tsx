@@ -7,7 +7,7 @@ import { storage } from '@/lib/storage';
 import { Provider, IntakeAnswers } from '@/lib/types';
 import { MOCK_PROVIDERS } from '@/lib/data/mockProviders';
 import { matchProviders } from '@/lib/matching/matchProviders';
-import { Check, Star, Send, Filter, Info, AlertTriangle, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Check, Star, Send, Filter, Info, AlertTriangle, ArrowRight, ArrowLeft, Sparkles } from 'lucide-react';
 import ProviderCard from '@/components/ui/ProviderCard';
 import PremiumCard from '@/components/ui/PremiumCard';
 import Notice from '@/components/ui/Notice';
@@ -23,6 +23,11 @@ function ProviderMatchingPageContent() {
   const [savedIds, setSavedIds] = useState<string[]>([]);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isDemoFallback, setIsDemoFallback] = useState(false);
+
+  const [aiMode, setAiMode] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [allFetchedProviders, setAllFetchedProviders] = useState<Provider[]>([]);
 
   const [activeFilters, setActiveFilters] = useState({
     type: 'all',
@@ -32,10 +37,78 @@ function ProviderMatchingPageContent() {
   });
   const [sortBy, setSortBy] = useState('best');
 
+  const runMatching = async (currentIntake: Partial<IntakeAnswers>, providersList: Provider[], useAi: boolean) => {
+    if (!currentIntake.concerns || currentIntake.concerns.length === 0) {
+      setMatches(providersList.map(p => ({ ...p, matchScore: 0, matchReason: 'Please complete intake to generate score details.' })));
+      return;
+    }
+
+    if (useAi) {
+      setAiLoading(true);
+      try {
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (isFirebaseMode && currentUser) {
+          const token = await currentUser.getIdToken();
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        
+        const res = await fetch('/api/ai/match-providers', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ intake: currentIntake, providers: providersList })
+        });
+        
+        if (!res.ok) {
+          throw new Error('AI matching service returned an error');
+        }
+        
+        const data = await res.json();
+        
+        if (data.matched && Array.isArray(data.matched)) {
+          const aiMatches = data.matched as { id: string; matchScore: number; matchReason: string; }[];
+          const mapped = providersList.map(p => {
+            const aiMatch = aiMatches.find(m => m.id === p.id);
+            if (aiMatch) {
+              return {
+                ...p,
+                matchScore: aiMatch.matchScore,
+                matchReason: aiMatch.matchReason
+              };
+            }
+            return {
+              ...p,
+              matchScore: 0,
+              matchReason: 'No matching recommendation from AI.'
+            };
+          });
+          setMatches(mapped);
+        } else {
+          throw new Error('Invalid matched data format');
+        }
+      } catch (e) {
+        console.error("AI Matching failed, falling back to standard matching:", e);
+        const results = matchProviders(currentIntake as IntakeAnswers, providersList);
+        setMatches(results.map(p => ({ ...p, matchReason: p.matchReason + ' (AI Matching unavailable)' })));
+      } finally {
+        setAiLoading(false);
+      }
+    } else {
+      const results = matchProviders(currentIntake as IntakeAnswers, providersList);
+      setMatches(results);
+    }
+  };
+
+  const handleAiToggle = async () => {
+    const nextMode = !aiMode;
+    setAiMode(nextMode);
+    await runMatching(intake, allFetchedProviders, nextMode);
+  };
+
   useEffect(() => {
     async function loadProviders() {
       let activeSaved: string[] = [];
       let currentIntake: Partial<IntakeAnswers> = {};
+      let resolvedProviders: Provider[] = [];
 
       if (isFirebaseMode && currentUser) {
         try {
@@ -50,19 +123,23 @@ function ProviderMatchingPageContent() {
           
           const dbProviders: Provider[] = [];
           solo.forEach(s => {
-            // Only show verified providers who are accepting new clients
-            if (s.verificationStatus === 'verified' && s.availability !== 'No availability') {
+            const isVerified = (s.verification?.verificationStatus || s.verificationStatus) === 'verified';
+            const availability = s.careDetails?.availability || s.availability || '';
+            
+            if (isVerified && availability !== 'No availability') {
               dbProviders.push({
                 id: s.userId,
-                name: s.displayName,
+                name: s.profile?.displayName || s.displayName || 'Solo Provider',
                 type: 'Solo Clinician',
-                licensure: `${s.licenseType} (${s.licenseState})`,
-                specialty: s.specialties,
-                modality: s.modalities,
-                insurance: s.coverageOptions,
-                slidingScale: s.coverageOptions.some(o => o.toLowerCase().includes('sliding') || o.toLowerCase().includes('scale') || o.toLowerCase().includes('self')),
-                nextAvailable: s.availability || '1-2 weeks',
-                sessionCost: '$120 - $180',
+                licensure: s.licensure 
+                  ? `${s.licensure.licenseType} (${s.licensure.licenseState})`
+                  : `${s.licenseType || 'LMFT'} (${s.licenseState || 'California'})`,
+                specialty: s.careDetails?.specialties || s.specialties || [],
+                modality: s.careDetails?.modalities || s.modalities || ['Telehealth'],
+                insurance: s.careDetails?.acceptedCoverageOptions || s.coverageOptions || [],
+                slidingScale: s.careDetails?.slidingScaleAvailable || s.coverageOptions?.some(o => o.toLowerCase().includes('sliding') || o.toLowerCase().includes('scale') || o.toLowerCase().includes('self')) || false,
+                nextAvailable: availability || '1-2 weeks',
+                sessionCost: s.careDetails?.selfPayRate || '$120 - $180',
                 matchScore: 0,
                 matchReason: ''
               });
@@ -70,18 +147,20 @@ function ProviderMatchingPageContent() {
           });
 
           org.forEach(o => {
-            // Only show verified clinics who are open for matching
-            if (o.verificationStatus === 'verified' && o.availability !== 'No availability') {
+            const isVerified = (o.verification?.verificationStatus || o.verificationStatus) === 'verified';
+            const availability = o.serviceDetails?.availability || o.availability || '';
+            
+            if (isVerified && availability !== 'No availability') {
               dbProviders.push({
                 id: o.orgId,
-                name: o.organizationName,
+                name: o.organizationProfile?.organizationName || o.organizationName || 'Clinic Group',
                 type: 'Clinic Group',
                 licensure: 'Verified Facility',
-                specialty: o.specialties,
-                modality: o.modalities,
-                insurance: o.coverageOptions,
-                slidingScale: o.coverageOptions.some(cov => cov.toLowerCase().includes('sliding') || cov.toLowerCase().includes('scale') || cov.toLowerCase().includes('self')),
-                nextAvailable: o.availability || 'Within a week',
+                specialty: o.serviceDetails?.specialties || o.specialties || [],
+                modality: o.serviceDetails?.modalities || o.modalities || ['Telehealth'],
+                insurance: o.serviceDetails?.acceptedCoverageOptions || o.coverageOptions || [],
+                slidingScale: o.serviceDetails?.slidingScaleAvailable || o.coverageOptions?.some(cov => cov.toLowerCase().includes('sliding') || cov.toLowerCase().includes('scale') || cov.toLowerCase().includes('self')) || false,
+                nextAvailable: availability || 'Within a week',
                 sessionCost: '$60 - $150',
                 matchScore: 0,
                 matchReason: ''
@@ -90,33 +169,27 @@ function ProviderMatchingPageContent() {
           });
 
           // Merge mock providers if Firestore has no verified providers
-          const allProviders = dbProviders.length > 0 ? dbProviders : MOCK_PROVIDERS;
-
-          setIntake(currentIntake);
-          setSavedIds(activeSaved);
-
-          if (currentIntake.concerns && currentIntake.concerns.length > 0) {
-            const results = matchProviders(currentIntake as IntakeAnswers, allProviders);
-            setMatches(results);
-          } else {
-            setMatches(allProviders.map(p => ({ ...p, matchScore: 0, matchReason: 'Please complete intake to generate score details.' })));
-          }
+          const useMock = dbProviders.length === 0;
+          resolvedProviders = useMock ? MOCK_PROVIDERS : dbProviders;
+          setIsDemoFallback(useMock);
         } catch (e) {
           console.error("Error loading matching data: ", e);
+          setIsDemoFallback(true);
+          resolvedProviders = MOCK_PROVIDERS;
         }
       } else {
         currentIntake = storage.getIntake();
         activeSaved = storage.getSavedProviders();
-        setIntake(currentIntake);
-        setSavedIds(activeSaved);
-
-        if (currentIntake.concerns && currentIntake.concerns.length > 0) {
-          const results = matchProviders(currentIntake as IntakeAnswers, MOCK_PROVIDERS);
-          setMatches(results);
-        } else {
-          setMatches(MOCK_PROVIDERS.map(p => ({ ...p, matchScore: 0, matchReason: 'Please complete intake to generate score details.' })));
-        }
+        setIsDemoFallback(true);
+        resolvedProviders = MOCK_PROVIDERS;
       }
+
+      setIntake(currentIntake);
+      setSavedIds(activeSaved);
+      setAllFetchedProviders(resolvedProviders);
+
+      // Perform matching
+      await runMatching(currentIntake, resolvedProviders, aiMode);
       setLoading(false);
     }
 
@@ -240,6 +313,14 @@ function ProviderMatchingPageContent() {
           </div>
         </div>
 
+        {isDemoFallback && (
+          <Notice variant="warn" title="Simulated Directory View" className="mb-6">
+            <span className="text-xs font-semibold">
+              Demo provider data shown because no verified Firebase providers are available.
+            </span>
+          </Notice>
+        )}
+
         {/* If no intake warning */}
         {!hasIntake && (
           <Notice variant="warn" title="Standard Directory View" className="mb-6">
@@ -253,6 +334,34 @@ function ProviderMatchingPageContent() {
               </Link>
             </div>
           </Notice>
+        )}
+
+        {/* Premium AI matching control */}
+        {hasIntake && (
+          <div className="card p-5 mb-6 bg-gradient-to-r from-teal-50/60 to-indigo-50/60 border border-wise-teal/20 rounded-2xl flex items-center justify-between gap-4 flex-wrap shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-wise-teal text-white flex items-center justify-center shadow-sm shrink-0">
+                <Sparkles className="w-5.5 h-5.5" />
+              </div>
+              <div>
+                <h4 className="font-semibold text-[14.5px] text-wise-teal-deep flex items-center gap-1.5 m-0">
+                  AI-Enabled Match Engine
+                  <span className="text-[10px] font-bold tracking-wider uppercase bg-wise-teal/10 text-wise-teal-deep py-0.5 px-2.5 rounded-full">Gemini 2.5</span>
+                </h4>
+                <p className="text-[12.5px] text-wise-muted leading-relaxed m-0 mt-0.5" style={{ maxWidth: '60ch' }}>
+                  Ranks providers by clinical suitability and practical constraints using advanced AI analysis.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={handleAiToggle}
+              disabled={aiLoading}
+              className={`btn btn-sm ${aiMode ? 'btn-primary' : 'btn-soft'}`}
+              style={{ minWidth: '140px', justifyContent: 'center' }}
+            >
+              {aiLoading ? 'Analyzing...' : aiMode ? '✓ AI Engine Active' : 'Enable AI Match'}
+            </button>
+          </div>
         )}
 
         <div className="match-grid">
@@ -367,7 +476,20 @@ function ProviderMatchingPageContent() {
               </div>
             )}
 
-            {sorted.length === 0 ? (
+            {aiLoading ? (
+              <div className="space-y-4">
+                {[1, 2, 3].map((n) => (
+                  <div key={n} className="card p-6 border border-wise-hairline rounded-2xl animate-pulse flex flex-col gap-3">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ width: '40%', height: '14px', background: 'var(--surface-2)', borderRadius: '9999px' }}></div>
+                      <div style={{ width: '60px', height: '14px', background: 'var(--surface-2)', borderRadius: '9999px' }}></div>
+                    </div>
+                    <div style={{ width: '70%', height: '12px', background: 'var(--surface-2)', borderRadius: '9999px', marginTop: '4px' }}></div>
+                    <div style={{ width: '100%', height: '32px', background: 'var(--surface-2)', borderRadius: '8px', marginTop: '12px' }}></div>
+                  </div>
+                ))}
+              </div>
+            ) : sorted.length === 0 ? (
               <div className="card" style={{ textAlign: 'center', padding: '40px' }}>
                 <p className="muted">No options match these filters. Try widening the criteria.</p>
               </div>

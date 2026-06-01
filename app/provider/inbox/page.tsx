@@ -13,6 +13,8 @@ import Notice from '@/components/ui/Notice';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { firestoreHelpers } from '@/lib/firebase/firestore';
+import ProviderChatPanel from '@/components/wise-care/ProviderChatPanel';
+import SupportPlanEditor from '@/components/wise-care/SupportPlanEditor';
 
 function ProviderInboxContent() {
   const { currentUser, isFirebaseMode } = useAuth();
@@ -21,6 +23,7 @@ function ProviderInboxContent() {
   const [selectedId, setSelectedId] = useState<string>('');
   const [filter, setFilter] = useState<'all' | 'new' | 'high'>('all');
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [editingPlan, setEditingPlan] = useState(false);
 
   const loadInbox = async () => {
     if (!currentUser) return;
@@ -45,6 +48,13 @@ function ProviderInboxContent() {
           status: r.status,
           providerId: r.providerId,
           providerName: r.providerName,
+          providerType: r.providerType,
+          appointmentDate: r.appointmentDate,
+          appointmentTimeSlot: r.appointmentTimeSlot,
+          appointmentType: r.appointmentType,
+          appointmentNotes: r.appointmentNotes,
+          carePacketId: r.carePacketId,
+          patientId: r.patientId,
         }));
 
         setReferrals(mapped);
@@ -69,6 +79,10 @@ function ProviderInboxContent() {
   useEffect(() => {
     loadInbox();
   }, [currentUser, isFirebaseMode]);
+
+  useEffect(() => {
+    setEditingPlan(false);
+  }, [selectedId]);
 
   const handleAction = async (id: string, action: 'accepted' | 'declined' | 'waitlisted' | 'info-requested') => {
     const nextStatus = action === 'info-requested' ? 'pending' : action;
@@ -241,8 +255,20 @@ function ProviderInboxContent() {
             {/* Detail Pane (Right Column) */}
             {selectedRef && (
               <div className="detail-pane">
-                <div className="inner">
-                  <div className="detail-head">
+                {editingPlan ? (
+                  <SupportPlanEditor
+                    referralId={selectedRef.id}
+                    patientId={selectedRef.patientId || ''}
+                    patientName={selectedRef.name}
+                    providerId={currentUser?.uid || ''}
+                    providerName={currentUser?.displayName || 'Provider'}
+                    providerType={selectedRef.providerType || 'solo_provider'}
+                    carePacketId={selectedRef.carePacketId || ''}
+                    onClose={() => setEditingPlan(false)}
+                  />
+                ) : (
+                  <div className="inner">
+                    <div className="detail-head">
                     <div>
                       <span className="detail-id">{selectedRef.id.toUpperCase()} · CARE PACKET SHARED</span>
                       <div className="detail-name">{selectedRef.name}</div>
@@ -310,6 +336,27 @@ function ProviderInboxContent() {
                     </span>
                   </div>
 
+                  {/* Booked Appointment Section */}
+                  {selectedRef.appointmentDate && (
+                    <div style={{ marginTop: '20px', padding: '16px', backgroundColor: 'var(--teal-soft)', border: '1px solid oklch(58% 0.11 158 / 0.22)', borderRadius: 'var(--r-md)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <h4 style={{ margin: '0', fontSize: '13px', color: 'var(--teal-deep)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#059669', display: 'inline-block' }}></span>
+                        Intake Session Booked by Patient
+                      </h4>
+                      <div style={{ fontSize: '14.5px', fontWeight: 600, color: 'var(--fg)', marginTop: '4px' }}>
+                        {selectedRef.appointmentDate} · {selectedRef.appointmentTimeSlot}
+                      </div>
+                      <div style={{ fontSize: '12.5px', color: 'var(--muted)', marginTop: '2px' }}>
+                        Session Type: <strong>{selectedRef.appointmentType}</strong>
+                      </div>
+                      {selectedRef.appointmentNotes && (
+                        <div style={{ marginTop: '8px', padding: '10px', background: 'var(--surface-2)', border: '1px solid var(--hairline)', borderRadius: 'var(--r-sm)', fontSize: '12.5px', color: 'var(--fg-soft)', fontStyle: 'italic' }}>
+                          Patient Notes: "{selectedRef.appointmentNotes}"
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* Dynamic Action Panel */}
                   <div style={{ display: 'flex', gap: '10px', marginTop: '22px', flexWrap: 'wrap' }}>
                     {selectedRef.status && selectedRef.status !== 'pending' ? (
@@ -317,12 +364,24 @@ function ProviderInboxContent() {
                         <span className="text-xs text-wise-fg-soft font-medium">
                           Current status for this referral: <span className="font-semibold capitalize text-wise-teal-deep">{selectedRef.status}</span>
                         </span>
-                        <button
-                          onClick={() => handleReset(selectedRef.id)}
-                          className="btn btn-ghost btn-xs text-wise-muted hover:text-wise-fg"
-                        >
-                          Change Action
-                        </button>
+                        <div className="flex gap-2 items-center">
+                          {selectedRef.status === 'accepted' && (
+                            <button
+                              onClick={() => setEditingPlan(true)}
+                              className="btn btn-soft btn-xs font-semibold py-1 px-2 flex items-center gap-1 border border-emerald-600/30"
+                              style={{ height: '24px', fontSize: '11px', textTransform: 'none' }}
+                            >
+                              🛠️ Manage Support Plan
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleReset(selectedRef.id)}
+                            className="btn btn-ghost btn-xs text-wise-muted hover:text-wise-fg"
+                            style={{ height: '24px', fontSize: '11px' }}
+                          >
+                            Change Action
+                          </button>
+                        </div>
                       </div>
                     ) : (
                       <>
@@ -353,7 +412,27 @@ function ProviderInboxContent() {
                       </>
                     )}
                   </div>
+
+                  {/* Provider Secure Chat Panel (Firebase Mode Exclusive) */}
+                  {selectedRef.status === 'accepted' && (
+                    <div style={{ marginTop: '24px' }}>
+                      {isFirebaseMode ? (
+                        <ProviderChatPanel
+                          referralId={selectedRef.id}
+                          providerId={currentUser?.uid || ''}
+                          providerName={currentUser?.displayName || 'Provider'}
+                          patientName={selectedRef.name}
+                          carePacketId={selectedRef.carePacketId}
+                        />
+                      ) : (
+                        <div style={{ padding: '20px', border: '1px border-dashed var(--border)', borderRadius: 'var(--r-md)', backgroundColor: 'var(--surface-2)', fontSize: '13px', color: 'var(--muted)', textAlign: 'center' }}>
+                          Secure Messaging and AI Clinical Summarizer are exclusive to Firebase Mode. Please configure Firebase to enable real-time messaging.
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
+              )}
               </div>
             )}
           </div>

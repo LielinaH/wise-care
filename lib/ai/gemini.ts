@@ -1,6 +1,9 @@
 import { GoogleGenAI } from '@google/genai';
-import { IntakeAnswers, CareRouteResult, CarePacket, FollowUpResult } from '../types';
+import { IntakeAnswers, CareRouteResult, CarePacket, FollowUpResult, Provider } from '../types';
 import { CARE_ROUTE_SYSTEM_PROMPT, CARE_PACKET_SYSTEM_PROMPT, FOLLOW_UP_SYSTEM_PROMPT } from './prompts';
+import { matchProviders } from '../matching/matchProviders';
+import { ChatMessageDoc, SupportPlanTask, SupportPlanResource } from '../firebase/types';
+import { SUPPORT_PLAN_TEMPLATES } from '../data/supportPlanTemplates';
 
 const apiKey = process.env.GEMINI_API_KEY;
 const modelName = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
@@ -455,4 +458,463 @@ function getFallbackAvailabilityHours(rawHours: string): string {
   }
   // Default fallback: Capitalize the first letter
   return rawHours.charAt(0).toUpperCase() + rawHours.slice(1);
+}
+
+const matchProvidersResponseSchema = {
+  type: 'OBJECT',
+  properties: {
+    rankedMatches: {
+      type: 'ARRAY',
+      items: {
+        type: 'OBJECT',
+        properties: {
+          id: { type: 'STRING' },
+          matchScore: { type: 'INTEGER' },
+          matchReason: { type: 'STRING' }
+        },
+        required: ['id', 'matchScore', 'matchReason']
+      }
+    }
+  },
+  required: ['rankedMatches']
+};
+
+const generateSlotsResponseSchema = {
+  type: 'OBJECT',
+  properties: {
+    slots: {
+      type: 'ARRAY',
+      items: {
+        type: 'OBJECT',
+        properties: {
+          date: { type: 'STRING' },
+          timeSlots: {
+            type: 'ARRAY',
+            items: { type: 'STRING' }
+          }
+        },
+        required: ['date', 'timeSlots']
+      }
+    }
+  },
+  required: ['slots']
+};
+
+/**
+ * Uses Gemini to rank, score, and provide reasoning for each provider based on the patient's intake.
+ */
+export async function matchProvidersWithAI(
+  intake: IntakeAnswers, 
+  providers: Provider[]
+): Promise<{ id: string; matchScore: number; matchReason: string; }[]> {
+  if (!ai) {
+    console.warn('GEMINI_API_KEY is not set. Using fallback matching.');
+    return getFallbackAIMatching(intake, providers);
+  }
+
+  try {
+    const intakePrompt = `
+      Patient Intake Profile:
+      - Concerns: ${intake.concerns.join(', ')}
+      - Natural Language Description: ${intake.concernDetail || 'None provided'}
+      - Modality Preference: ${intake.modality || 'Not specified'}
+      - Payment/Insurance Preference: ${intake.insurance || 'Not specified'}
+      - Urgency: ${intake.urgency || 'Not specified'}
+      - State: ${intake.stateName || 'Not specified'}
+    `;
+
+    const providerListText = providers.map(p => `
+      Provider ID: ${p.id}
+      Name: ${p.name}
+      Type: ${p.type}
+      Licensure: ${p.licensure}
+      Specialties: ${p.specialty.join(', ')}
+      Modalities: ${p.modality.join(', ')}
+      Accepted Coverage: ${p.insurance.join(', ')}
+      Sliding Scale: ${p.slidingScale ? 'Yes' : 'No'}
+      Availability: ${p.nextAvailable}
+      Session Cost: ${p.sessionCost}
+    `).join('\n---\n');
+
+    const userPrompt = `
+      Evaluate the suitability of each candidate provider for this patient.
+      
+      ${intakePrompt}
+
+      Candidate Providers:
+      ${providerListText}
+      
+      For each provider, assign a score between 0 and 100 representing compatibility.
+      - Strong clinical fit (specialties matching the concerns) and practical fit (insurance, modality, state licensure) should get scores above 80.
+      - If the state licensing doesn't match the patient's state, penalize heavily (score below 40).
+      - Provide a concise 1-2 sentence "matchReason" detailing why this provider is a good fit or any minor discrepancies. Do not use diagnostic language (e.g. do not state "you have severe anxiety", instead say "matches your goals for managing anxiety").
+      
+      Return a ranked list of matched providers.
+    `;
+
+    const response = await ai.models.generateContent({
+      model: modelName,
+      contents: userPrompt,
+      config: {
+        systemInstruction: 'You are a healthcare provider matching coordinator. Rate compatibility and describe why in a non-diagnostic, friendly, professional manner.',
+        responseMimeType: 'application/json',
+        responseSchema: matchProvidersResponseSchema as any,
+      },
+    });
+
+    if (!response.text) {
+      throw new Error('Empty response from Gemini');
+    }
+
+    const result = JSON.parse(response.text) as { rankedMatches: { id: string; matchScore: number; matchReason: string; }[] };
+    return result.rankedMatches;
+  } catch (error) {
+    console.error('Error generating AI matches with Gemini:', error);
+    return getFallbackAIMatching(intake, providers);
+  }
+}
+
+function getFallbackAIMatching(
+  intake: IntakeAnswers, 
+  providers: Provider[]
+): { id: string; matchScore: number; matchReason: string; }[] {
+  const clientMatched = matchProviders(intake, providers);
+  return clientMatched.map(p => ({
+    id: p.id,
+    matchScore: p.matchScore,
+    matchReason: p.matchReason + ' (AI engine fallback)'
+  }));
+}
+
+/**
+ * Uses Gemini to parse a provider's casual availability string (e.g. "Tue/Thu afternoons · 1-5pm")
+ * into a structured list of date and time slots for the next 7 days.
+ */
+export async function generateSlotsFromAvailability(
+  availabilityStr: string
+): Promise<{ date: string; timeSlots: string[]; }[]> {
+  if (!ai) {
+    console.warn('GEMINI_API_KEY is not set. Using fallback slot generator.');
+    return getFallbackSlots(availabilityStr);
+  }
+
+  try {
+    const today = new Date();
+    const systemPrompt = `You are a clinical scheduling parser.
+Your task is to take a provider's raw availability string and parse it to generate a structured set of appointment slots (date and time) for the upcoming 7 days starting from today: ${today.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}.
+Identify which days of the week are available and which hours. Generate hourly slots (e.g. "10:00 AM", "11:00 AM", "1:00 PM").
+Example: "Tue/Thu afternoons · 1-5pm" -> Generate slots for upcoming Tuesday and Thursday between 1:00 PM and 5:00 PM.
+
+Return the response in a structured JSON schema.`;
+
+    const response = await ai.models.generateContent({
+      model: modelName,
+      contents: `Raw Availability: "${availabilityStr}"`,
+      config: {
+        systemInstruction: systemPrompt,
+        responseMimeType: 'application/json',
+        responseSchema: generateSlotsResponseSchema as any,
+      },
+    });
+
+    if (!response.text) {
+      throw new Error('Empty response from Gemini');
+    }
+
+    const result = JSON.parse(response.text) as { slots: { date: string; timeSlots: string[]; }[] };
+    return result.slots;
+  } catch (error) {
+    console.error('Error parsing slots with Gemini:', error);
+    return getFallbackSlots(availabilityStr);
+  }
+}
+
+function getFallbackSlots(availabilityStr: string): { date: string; timeSlots: string[]; }[] {
+  const slots: { date: string; timeSlots: string[]; }[] = [];
+  const today = new Date();
+  
+  const normalized = availabilityStr.toLowerCase();
+  const isWeekendOnly = normalized.includes('weekend') || normalized.includes('saturday') || normalized.includes('sunday');
+  const isTueThu = normalized.includes('tue') || normalized.includes('thu');
+  
+  for (let i = 1; i <= 7; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    const dayName = d.toLocaleDateString('en-US', { weekday: 'long' });
+    const formattedDate = d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+    
+    let include = false;
+    let times = ['9:00 AM', '11:00 AM', '2:00 PM', '4:30 PM'];
+    
+    if (isWeekendOnly) {
+      if (dayName === 'Saturday' || dayName === 'Sunday') {
+        include = true;
+        times = ['10:00 AM', '12:00 PM', '2:00 PM'];
+      }
+    } else if (isTueThu) {
+      if (dayName === 'Tuesday' || dayName === 'Thursday') {
+        include = true;
+        times = ['1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM'];
+      }
+    } else {
+      if (dayName !== 'Saturday' && dayName !== 'Sunday') {
+        include = true;
+        if (normalized.includes('evening')) {
+          times = ['5:00 PM', '6:00 PM', '7:00 PM'];
+        } else if (normalized.includes('morning')) {
+          times = ['8:00 AM', '9:30 AM', '11:00 AM'];
+        }
+      }
+    }
+    
+    if (include) {
+      slots.push({
+        date: formattedDate,
+        timeSlots: times
+      });
+    }
+  }
+  
+  return slots;
+}
+
+/**
+ * Uses Gemini to summarize the patient's care packet details and chat logs into a copyable clinical brief.
+ */
+export async function summarizeChatHistory(
+  messages: ChatMessageDoc[],
+  intakeAnswers: any
+): Promise<string> {
+  if (!ai) {
+    console.warn('GEMINI_API_KEY is not set. Using fallback chat summarizer.');
+    return getFallbackChatSummary(messages, intakeAnswers);
+  }
+
+  try {
+    const chatLog = messages.map(m => `${m.senderName}: "${m.text}"`).join('\n');
+    const intakeDetail = intakeAnswers ? `
+      - Primary Concerns: ${intakeAnswers.concerns?.join(', ') || 'None listed'}
+      - Detail: ${intakeAnswers.concernDetail || 'None provided'}
+      - Urgency: ${intakeAnswers.urgency || 'Flexible'}
+      - Payment/Insurance: ${intakeAnswers.insurance || 'Self-pay'}
+    ` : 'No intake answers provided';
+
+    const systemPrompt = `You are a clinical assistant. Your task is to draft a professional, clear clinical intake summary brief.
+Follow the SOAP note structure:
+- SUBJECTIVE: Patient's reported symptoms, concerns, duration, and daily impact.
+- OBJECTIVE: Observations from message style or stated facts (e.g. "Patient shared intake packet; communicated in 3 messages"). Do not make clinical diagnostics.
+- ASSESSMENT: Match assessment (e.g. "Patient concerns of anxiety/sleep align with provider modality"). Do not diagnose clinical diseases (e.g., do not write "Major Depressive Disorder", use "reported depressive symptoms").
+- PLAN: Suggested next steps, including the scheduled intake session.
+
+Keep it structured, clear, and professional. Write a disclaimer at the top: "**[AI-Generated Clinical Summary Draft - For Provider Review Only]**"`;
+
+    const response = await ai.models.generateContent({
+      model: modelName,
+      contents: `Intake Answers:\n${intakeDetail}\n\nChat Messages:\n${chatLog}`,
+      config: {
+        systemInstruction: systemPrompt,
+      },
+    });
+
+    return response.text || getFallbackChatSummary(messages, intakeAnswers);
+  } catch (error) {
+    console.error('Error generating chat summary with Gemini:', error);
+    return getFallbackChatSummary(messages, intakeAnswers);
+  }
+}
+
+function getFallbackChatSummary(messages: ChatMessageDoc[], intakeAnswers: any): string {
+  const concerns = intakeAnswers?.concerns?.join(', ') || 'Anxiety/Sleep difficulty';
+  const detail = intakeAnswers?.concernDetail || 'No detailed description provided.';
+  const msgCount = messages.length;
+  
+  return `**[AI-Generated Clinical Summary Draft - For Provider Review Only]**
+
+### SOAP Note Format (Fallback Mode)
+
+**SUBJECTIVE:**
+- **Chief Complaint:** Patient reports concerns regarding: ${concerns}.
+- **Patient Context:** ${detail}
+- **History of Present Illness (HPI):** Symptoms described as ongoing. Daily life areas impacted include mood and routine sleep habits.
+
+**OBJECTIVE:**
+- Patient completed digital intake check-in and successfully shared their Care Packet.
+- Provider accepted the referral.
+- Secure chat connection established. Total messages in log: ${msgCount}.
+
+**ASSESSMENT:**
+- **Clinical Match Evaluation:** Patient concerns of ${concerns} align with the provider's scope of practice. Modality preference matched.
+- No immediate safety crisis triggers detected in standard fields.
+
+**PLAN:**
+- Proceed with the scheduled intake consultation session.
+- Discuss treatment goals, clinic boundaries, and payment setup during first live check-in.`;
+}
+
+/**
+ * Uses Gemini to draft a professional, warm clinician response based on the patient's messages.
+ */
+export async function draftReplyFromAI(
+  messages: ChatMessageDoc[],
+  providerName: string
+): Promise<string> {
+  if (!ai) {
+    console.warn('GEMINI_API_KEY is not set. Using fallback clinician reply draft.');
+    return getFallbackReplyDraft(messages);
+  }
+
+  try {
+    const chatLog = messages.slice(-5).map(m => `${m.senderName}: "${m.text}"`).join('\n');
+
+    const systemPrompt = `You are a clinical communications assistant. Draft a warm, professional, and empathetic response from the provider (${providerName}) to the patient based on the chat history.
+Guidelines:
+- Keep the response short (2-3 sentences).
+- Do not make any diagnostic assertions or treatment commitments.
+- Propose or acknowledge the next step (e.g. looking forward to meeting in the intake session).
+- Do not sign with placeholder names, write from the perspective of ${providerName}.
+- Return ONLY the response text. Do not include quotes, greetings like "Here is the response:", or markdown formatting. Just the reply.`;
+
+    const response = await ai.models.generateContent({
+      model: modelName,
+      contents: `Recent Chat Messages:\n${chatLog}`,
+      config: {
+        systemInstruction: systemPrompt,
+      },
+    });
+
+    return response.text?.trim().replace(/^"(.*)"$/, '$1') || getFallbackReplyDraft(messages);
+  } catch (error) {
+    console.error('Error drafting reply with Gemini:', error);
+    return getFallbackReplyDraft(messages);
+  }
+}
+
+function getFallbackReplyDraft(messages: ChatMessageDoc[]): string {
+  const lastMsg = messages[messages.length - 1];
+  if (lastMsg && lastMsg.text.toLowerCase().includes('schedule')) {
+    return "Thank you for scheduling the intake session! I've received the confirmation and look forward to meeting with you. Please let me know if you need to adjust the time.";
+  }
+  return "Thank you for reaching out and sharing your care packet details. I have reviewed your goals and concerns, and I look forward to connecting during our scheduled consultation. Let me know if you have any questions in the meantime.";
+}
+
+const supportPlanResponseSchema = {
+  type: 'OBJECT',
+  properties: {
+    tasks: {
+      type: 'ARRAY',
+      items: {
+        type: 'OBJECT',
+        properties: {
+          id: { type: 'STRING' },
+          title: { type: 'STRING' },
+          description: { type: 'STRING' },
+          category: {
+            type: 'STRING',
+            enum: ['preparation', 'reflection', 'sleep', 'grounding', 'outreach', 'follow_up', 'reading', 'custom']
+          }
+        },
+        required: ['id', 'title', 'description', 'category']
+      }
+    },
+    resources: {
+      type: 'ARRAY',
+      items: {
+        type: 'OBJECT',
+        properties: {
+          title: { type: 'STRING' },
+          type: {
+            type: 'STRING',
+            enum: ['worksheet', 'reading', 'checklist', 'sleep_log', 'grounding_exercise', 'external_link', 'custom']
+          },
+          description: { type: 'STRING' },
+          content: { type: 'STRING' }
+        },
+        required: ['title', 'type', 'description', 'content']
+      }
+    }
+  },
+  required: ['tasks', 'resources']
+};
+
+/**
+ * Uses Gemini to generate a supportive prep-oriented support plan draft based on the patient's Care Packet details.
+ */
+export async function generateSupportPlanDraft(
+  carePacket: CarePacket,
+  templateId: string,
+  providerName: string
+): Promise<{ tasks: SupportPlanTask[]; resources: SupportPlanResource[]; }> {
+  const fallbackTemplate = SUPPORT_PLAN_TEMPLATES.find(t => t.id === templateId) || SUPPORT_PLAN_TEMPLATES[0];
+
+  if (!ai) {
+    console.warn('GEMINI_API_KEY is not set. Using template defaults for support plan.');
+    return {
+      tasks: fallbackTemplate.defaultTasks.map(t => ({ ...t, completed: false } as SupportPlanTask)),
+      resources: fallbackTemplate.defaultResources.map((r, idx) => ({ ...r, id: `res_${idx}`, demoOnly: true } as SupportPlanResource))
+    };
+  }
+
+  try {
+    const packetDetail = `
+      - Patient concerns: ${carePacket.mainConcerns?.join(', ') || 'General concerns'}
+      - Timeline: ${carePacket.timeline || ''}
+      - Daily life impact: ${carePacket.dailyLifeImpact?.join(', ') || ''}
+      - Care goals: ${carePacket.careGoals?.join(', ') || ''}
+    `;
+
+    const systemPrompt = `You are a clinical care coordinator assistant.
+Your task is to draft a professional, non-clinical, preparation-focused Support Plan for a patient based on their intake Care Packet.
+This plan must help them prepare for their upcoming live intake session with the provider (${providerName}).
+
+Rules:
+- Do NOT prescribe medical treatment, suggest medications, or diagnose clinical conditions.
+- Focus on preparation tasks, self-reflection prompts, sleep routines, grounding exercises, or community outreach tasks.
+- Keep the tasks friendly, low-risk, and supportive.
+- Customize the tasks slightly to relate to the patient's concerns (e.g. if the concern is sleep, write tasks targeting sleep hygiene; if anxiety, write grounding box breathing).
+- Map each task to a category: preparation, reflection, sleep, grounding, outreach, follow_up, reading, custom.
+- For resources, draft 1-2 useful educational resources (worksheets, grounding guides, or reading outlines).
+
+Return the response in a structured JSON schema.`;
+
+    const userPrompt = `
+      Patient Care Packet Details:
+      ${packetDetail}
+
+      Selected Template Focus: ${fallbackTemplate.title} ("${fallbackTemplate.description}")
+      Provider Name: ${providerName}
+    `;
+
+    const response = await ai.models.generateContent({
+      model: modelName,
+      contents: userPrompt,
+      config: {
+        systemInstruction: systemPrompt,
+        responseMimeType: 'application/json',
+        responseSchema: supportPlanResponseSchema as any,
+      },
+    });
+
+    if (!response.text) {
+      throw new Error('Empty response from Gemini');
+    }
+
+    const result = JSON.parse(response.text);
+    return {
+      tasks: (result.tasks || []).map((t: any) => ({
+        ...t,
+        completed: false
+      })),
+      resources: (result.resources || []).map((r: any, idx: number) => ({
+        ...r,
+        id: `res_${idx}`,
+        demoOnly: true
+      }))
+    };
+  } catch (error) {
+    console.error('Error generating AI support plan draft:', error);
+    return {
+      tasks: fallbackTemplate.defaultTasks.map(t => ({ ...t, completed: false } as SupportPlanTask)),
+      resources: fallbackTemplate.defaultResources.map((r, idx) => ({ ...r, id: `res_${idx}`, demoOnly: true } as SupportPlanResource))
+    };
+  }
 }

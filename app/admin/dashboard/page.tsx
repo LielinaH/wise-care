@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import AppShell from '@/components/layout/AppShell';
 import { storage } from '@/lib/storage';
-import { ShieldAlert, Award, AlertTriangle, Users, Info, ChevronRight, Activity, ShieldAlert as AlertIcon, ArrowRight } from 'lucide-react';
+import { ShieldAlert, Award, AlertTriangle, Users, Info, ChevronRight, Activity, ShieldAlert as AlertIcon, ArrowRight, Loader2 } from 'lucide-react';
 import Notice from '@/components/ui/Notice';
 
 const INITIAL_PENDING = [
@@ -20,6 +20,25 @@ import { firestoreHelpers } from '@/lib/firebase/firestore';
 function AdminDashboardContent() {
   const { currentUser, isFirebaseMode } = useAuth();
   const [pending, setPending] = useState<any[]>([]);
+  const [seeding, setSeeding] = useState(false);
+
+  const handleSeed = async () => {
+    setSeeding(true);
+    try {
+      if (isFirebaseMode) {
+        await firestoreHelpers.seedDemoProviders();
+        alert('Firestore seeded with deterministic demo providers successfully!');
+      } else {
+        alert('App is in local mock mode. Firebase is not configured.');
+      }
+      window.location.reload();
+    } catch (err: any) {
+      console.error(err);
+      alert(`Seeding failed: ${err.message}`);
+    } finally {
+      setSeeding(false);
+    }
+  };
 
   useEffect(() => {
     async function loadData() {
@@ -88,6 +107,20 @@ function AdminDashboardContent() {
           </div>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <span className="badge"><span className="dot" style={{ background: 'oklch(56% 0.11 158)' }}></span>Systems healthy</span>
+            <button 
+              className="btn btn-soft btn-sm flex items-center gap-1" 
+              onClick={handleSeed}
+              disabled={seeding}
+            >
+              {seeding ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
+                  <span>Seeding...</span>
+                </>
+              ) : (
+                '🌱 Seed Demo Providers'
+              )}
+            </button>
             <button className="btn btn-ghost btn-sm" onClick={() => alert('Digest exported successfully (Simulation).')}>Export weekly digest</button>
           </div>
         </div>

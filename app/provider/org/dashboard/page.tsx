@@ -10,7 +10,7 @@ import { storage } from '@/lib/storage';
 import { Referral } from '@/lib/types';
 import { ProviderOrgProfile } from '@/lib/firebase/types';
 import { MOCK_REFERRALS } from '@/lib/data/mockReferrals';
-import { Inbox, Settings, Users, Clock, Info, ArrowRight, Loader2, Building } from 'lucide-react';
+import { Inbox, Settings, Users, Clock, Info, ArrowRight, Loader2, Building, AlertTriangle } from 'lucide-react';
 import StatCard from '@/components/ui/StatCard';
 import Badge from '@/components/ui/Badge';
 import Notice from '@/components/ui/Notice';
@@ -20,6 +20,7 @@ function OrgProviderDashboardContent() {
   const [profile, setProfile] = useState<ProviderOrgProfile | null>(null);
   const [referrals, setReferrals] = useState<any[]>([]);
   const [accepting, setAccepting] = useState(true);
+  const [supportPlans, setSupportPlans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -38,6 +39,9 @@ function OrgProviderDashboardContent() {
           const refs = await firestoreHelpers.getReferralsForProvider(currentUser.uid);
           const activeRefs = refs.filter(r => r.status !== 'withdrawn');
           setReferrals(activeRefs);
+
+          const plans = await firestoreHelpers.getSupportPlansForProvider(currentUser.uid);
+          setSupportPlans(plans);
         } catch (e) {
           console.error("Error loading org provider dashboard data: ", e);
         }
@@ -92,6 +96,11 @@ function OrgProviderDashboardContent() {
       const updatedProfile = { ...profile, availability: nextAvailabilityString };
       setProfile(updatedProfile);
     }
+  };
+
+  const getPatientNameForPlan = (plan: any) => {
+    const match = referrals.find(r => (r.referralId === plan.referralId || r.id === plan.referralId));
+    return match ? (match.patientDisplayName || match.name) : `Patient (${plan.patientId.substring(0, 6)})`;
   };
 
   const pendingCount = referrals.filter(r => r.status === 'pending').length;
@@ -161,6 +170,20 @@ function OrgProviderDashboardContent() {
     return 'success';
   };
 
+  const currentStatus = (profile?.verification?.verificationStatus || profile?.verificationStatus || 'draft') as string;
+  const itemStatuses = profile?.verification?.itemStatuses || {};
+  const itemNotes = profile?.verification?.itemNotes || {};
+  const needsInfoItems = Object.entries(itemStatuses)
+    .filter(([_, status]) => status === 'needs_info')
+    .map(([key, _]) => ({
+      key,
+      label: key === 'licensure' ? 'Licensure & Credentials scan' :
+             key === 'clinical' ? 'Specialties & Modalities' :
+             key === 'references' ? 'Professional References' :
+             key === 'identity' ? 'Identity & Profile Details' : key,
+      note: itemNotes[key] || 'No specific notes provided.'
+    }));
+
   return (
     <AppShell 
       title="Clinic Administration" 
@@ -190,9 +213,9 @@ function OrgProviderDashboardContent() {
                 </p>
               </div>
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-                <span className="badge teal">
+                <span className={`badge ${currentStatus === 'verified' ? 'teal' : currentStatus === 'request_info' ? 'warn' : currentStatus === 'rejected' ? 'danger' : ''}`}>
                   <span className="dot"></span>
-                  {profile?.verificationStatus === 'verified' ? 'Clinic Verified' : 'Awaiting Administration Approval'}
+                  {currentStatus === 'verified' ? 'Clinic Verified' : currentStatus === 'request_info' ? 'Info Requested' : currentStatus === 'rejected' ? 'Rejected' : 'Pending Audit'}
                 </span>
                 <Link href="/provider/inbox" className="btn btn-primary">
                   Open referral inbox<span className="inner">{pendingCount} new <ArrowRight className="w-3.5 h-3.5" /></span>
@@ -202,45 +225,211 @@ function OrgProviderDashboardContent() {
           </div>
         </div>
 
-        {/* Dashboard Grid */}
-        <div className="dash-grid">
-          {/* Left Card: Recent Referrals */}
-          <div className="card">
-            <div className="card-head mb-4 flex justify-between items-center">
-              <div>
-                <h3 className="h3">Recent referrals</h3>
-                <div className="sub text-wise-muted text-xs">Sorted by arrival. Providers only see shared Care Packets.</div>
+        {/* Verification Timeline */}
+        {currentStatus !== 'verified' && (
+          <div className="card p-5 border border-wise-border bg-wise-surface rounded-xl">
+            <h4 className="text-xs font-mono tracking-wider text-wise-muted uppercase mb-3">Verification Timeline</h4>
+            <div className="flex flex-col md:flex-row gap-4 justify-between">
+              
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs font-bold shrink-0">
+                  ✓
+                </div>
+                <div>
+                  <span className="text-xs font-semibold block text-wise-fg">1. Draft</span>
+                  <span className="text-[10px] text-wise-muted">Profile initialized</span>
+                </div>
               </div>
-              <Link href="/provider/inbox" className="btn btn-quiet btn-sm flex items-center gap-1">
-                View all <ArrowRight className="w-3.5 h-3.5" />
+
+              <div className="flex items-center gap-2">
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                  currentStatus !== 'draft' ? 'bg-emerald-100 text-emerald-800' : 'bg-wise-surface-2 text-wise-muted'
+                }`}>
+                  {currentStatus !== 'draft' ? '✓' : '2'}
+                </div>
+                <div>
+                  <span className="text-xs font-semibold block text-wise-fg">2. Submitted</span>
+                  <span className="text-[10px] text-wise-muted">Awaiting review</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                  currentStatus === 'pending' || currentStatus === 'request_info' || currentStatus === 'rejected'
+                    ? 'bg-amber-100 text-amber-800'
+                    : (currentStatus === 'verified' ? 'bg-emerald-100 text-emerald-800' : 'bg-wise-surface-2 text-wise-muted')
+                }`}>
+                  {currentStatus === 'verified' ? '✓' : '3'}
+                </div>
+                <div>
+                  <span className="text-xs font-semibold block text-wise-fg">3. Under Review</span>
+                  <span className="text-[10px] text-wise-muted">Credentials audit</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                  currentStatus === 'request_info' ? 'bg-amber-100 text-amber-800' : 'bg-wise-surface-2 text-wise-muted'
+                }`}>
+                  {currentStatus === 'request_info' ? '!' : '4'}
+                </div>
+                <div>
+                  <span className="text-xs font-semibold block text-wise-fg">4. Request Info</span>
+                  <span className="text-[10px] text-wise-muted">Feedback received</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                  currentStatus === 'rejected' 
+                    ? 'bg-rose-100 text-rose-800' 
+                    : (currentStatus === 'verified' ? 'bg-emerald-100 text-emerald-800' : 'bg-wise-surface-2 text-wise-muted')
+                }`}>
+                  {currentStatus === 'verified' ? '✓' : (currentStatus === 'rejected' ? '✗' : '5')}
+                </div>
+                <div>
+                  <span className="text-xs font-semibold block text-wise-fg">
+                    {currentStatus === 'rejected' ? 'Rejected' : '5. Verified'}
+                  </span>
+                  <span className="text-[10px] text-wise-muted">
+                    {currentStatus === 'rejected' ? 'Verification failed' : 'Live matching active'}
+                  </span>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        )}
+
+        {/* Action Checklist for Request Info */}
+        {currentStatus === 'request_info' && needsInfoItems.length > 0 && (
+          <div className="card p-5 border border-amber-200 bg-amber-50 rounded-xl space-y-3">
+            <div className="flex items-center gap-2 text-amber-800 font-bold">
+              <AlertTriangle className="w-5 h-5 text-amber-600" />
+              <span>Information Requested by Administrator</span>
+            </div>
+            <p className="text-xs text-amber-700">
+              Please review and update the following sections in your registration form to complete verification:
+            </p>
+            <ul className="space-y-2 text-xs text-amber-950 list-disc list-inside bg-wise-surface p-3.5 rounded-lg border border-amber-200">
+              {needsInfoItems.map(item => (
+                <li key={item.key} className="leading-relaxed">
+                  <strong className="text-amber-800">{item.label}</strong>:
+                  <span className="block mt-0.5 text-wise-muted font-normal italic pl-4">"{item.note}"</span>
+                </li>
+              ))}
+            </ul>
+            <div className="pt-1">
+              <Link href="/provider/org/register" className="btn btn-sm btn-primary">
+                Update Practice Details
               </Link>
             </div>
-            <div>
-              {referrals.slice(0, 4).map((r) => {
-                const dateText = r.createdAt && r.createdAt.seconds 
-                  ? new Date(r.createdAt.seconds * 1000).toLocaleDateString()
-                  : (r.received || 'Just now');
-                return (
-                  <div key={r.referralId || r.id} className="ref-row">
-                    <span className="ref-id">{(r.referralId || r.id).substring(0, 6).toUpperCase()}</span>
-                    <div>
-                      <div style={{ fontWeight: 500 }}>{r.patientDisplayName || r.name}</div>
-                      <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '2px' }}>
-                        {r.route || 'Clinic Intake'} · {r.insurance || 'Public Coverage'}
+          </div>
+        )}
+
+        {/* Dashboard Grid */}
+        <div className="dash-grid">
+          {/* Left Column Stack */}
+          <div className="stack" style={{ '--gap': '20px' } as React.CSSProperties}>
+            {/* Recent Referrals */}
+            <div className="card">
+              <div className="card-head mb-4 flex justify-between items-center">
+                <div>
+                  <h3 className="h3">Recent referrals</h3>
+                  <div className="sub text-wise-muted text-xs">Sorted by arrival. Providers only see shared Care Packets.</div>
+                </div>
+                <Link href="/provider/inbox" className="btn btn-quiet btn-sm flex items-center gap-1">
+                  View all <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+              <div>
+                {referrals.slice(0, 4).map((r) => {
+                  const dateText = r.createdAt && r.createdAt.seconds 
+                    ? new Date(r.createdAt.seconds * 1000).toLocaleDateString()
+                    : (r.received || 'Just now');
+                  return (
+                    <div key={r.referralId || r.id} className="ref-row">
+                      <span className="ref-id">{(r.referralId || r.id).substring(0, 6).toUpperCase()}</span>
+                      <div>
+                        <div style={{ fontWeight: 500 }}>{r.patientDisplayName || r.name}</div>
+                        <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '2px' }}>
+                          {r.route || 'Clinic Intake'} · {r.insurance || 'Public Coverage'}
+                        </div>
                       </div>
+                      <span className={`badge ${riskClass(r.risk || 'low')}`}>
+                        {(r.risk || 'LOW').toUpperCase()} RISK
+                      </span>
+                      <span style={{ fontSize: '12px', color: 'var(--muted)', fontFamily: 'var(--font-mono)', letterSpacing: '0.04em' }}>
+                        {dateText}
+                      </span>
                     </div>
-                    <span className={`badge ${riskClass(r.risk || 'low')}`}>
-                      {(r.risk || 'LOW').toUpperCase()} RISK
-                    </span>
-                    <span style={{ fontSize: '12px', color: 'var(--muted)', fontFamily: 'var(--font-mono)', letterSpacing: '0.04em' }}>
-                      {dateText}
-                    </span>
+                  );
+                })}
+                {referrals.length === 0 && (
+                  <div className="py-8 text-center text-xs text-wise-muted italic">
+                    No active referrals in queue.
                   </div>
-                );
-              })}
-              {referrals.length === 0 && (
+                )}
+              </div>
+            </div>
+
+            {/* Active Support Plans */}
+            <div className="card">
+              <div className="card-head mb-4 flex justify-between items-center">
+                <div>
+                  <h3 className="h3">Active Support Plans</h3>
+                  <div className="sub text-wise-muted text-xs">Pre-session preparation checklists and patient progress.</div>
+                </div>
+                <Link href="/provider/inbox" className="btn btn-quiet btn-sm flex items-center gap-1">
+                  Manage Plans
+                </Link>
+              </div>
+
+              {!isFirebaseMode ? (
+                <div className="p-4 bg-amber-50/50 border border-amber-200/50 rounded-xl flex gap-2 items-center text-xs text-amber-800">
+                  <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600" />
+                  <span>Support plans are disabled in local fallback mode. Enable Firebase to use this feature.</span>
+                </div>
+              ) : supportPlans.length === 0 ? (
                 <div className="py-8 text-center text-xs text-wise-muted italic">
-                  No active referrals in queue.
+                  No active support plans. Create one from the Referral Inbox.
+                </div>
+              ) : (
+                <div className="divide-y divide-wise-border">
+                  {supportPlans.map((plan) => {
+                    const completed = plan.tasks?.filter((t: any) => t.completed).length || 0;
+                    const total = plan.tasks?.length || 0;
+                    const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+                    const patientName = getPatientNameForPlan(plan);
+                    return (
+                      <div key={plan.planId} className="py-3.5 flex flex-col gap-2">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <div className="text-sm font-semibold text-wise-fg flex items-center gap-2">
+                              {patientName}
+                              <Badge variant={plan.status === 'shared' ? 'teal' : 'warn'} className="text-[10px] uppercase font-mono py-0.5 px-1.5">
+                                {plan.status}
+                              </Badge>
+                            </div>
+                            <div className="text-xs text-wise-muted mt-0.5">{plan.title}</div>
+                          </div>
+                          <span className="text-xs font-mono font-medium text-wise-fg">{percent}%</span>
+                        </div>
+                        <div className="w-full bg-wise-surface-2 rounded-full h-1.5 overflow-hidden">
+                          <div 
+                            className="bg-wise-teal h-1.5 rounded-full transition-all duration-500" 
+                            style={{ width: `${percent}%` }}
+                          />
+                        </div>
+                        <div className="flex justify-between items-center text-[11px] text-wise-muted">
+                          <span>{completed} of {total} tasks completed</span>
+                          {plan.sharedAt && (
+                            <span>Shared {new Date(plan.sharedAt.seconds ? plan.sharedAt.seconds * 1000 : plan.sharedAt).toLocaleDateString()}</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

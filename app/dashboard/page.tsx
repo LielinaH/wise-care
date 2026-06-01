@@ -19,7 +19,9 @@ import {
   Shield,
   Info,
   ArrowRight,
-  Loader2
+  Loader2,
+  ClipboardList,
+  AlertCircle
 } from 'lucide-react';
 
 function UserDashboardContent() {
@@ -32,6 +34,7 @@ function UserDashboardContent() {
   const [sentRequests, setSentRequests] = useState<string[]>([]);
   const [matched, setMatched] = useState<Provider[]>([]);
   const [hasCompletedFollowUp, setHasCompletedFollowUp] = useState(false);
+  const [activeSupportPlan, setActiveSupportPlan] = useState<any | null>(null);
   const [loadingData, setLoadingData] = useState(true);
 
   useEffect(() => {
@@ -55,6 +58,10 @@ function UserDashboardContent() {
             const refs = await firestoreHelpers.getReferralsForPatient(currentUser.uid);
             const activeRefs = refs.filter(r => r.status !== 'withdrawn');
             setSentRequests(activeRefs.map(r => r.providerId));
+
+            // Load support plan
+            const plan = await firestoreHelpers.getSupportPlanForPatient(currentUser.uid);
+            setActiveSupportPlan(plan);
 
             // Load follow-ups
             const followups = await firestoreHelpers.getFollowUpsForPatient(currentUser.uid);
@@ -257,6 +264,50 @@ function UserDashboardContent() {
           </div>
         </div>
 
+        {/* Active Support Plan Card */}
+        {activeSupportPlan && (
+          <div className="card" style={{ padding: '24px', display: 'flex', gap: '20px', background: 'oklch(98% 0.01 190)', border: '1px solid oklch(85% 0.03 190)', borderRadius: 'var(--r-xl)' }}>
+            <div className="ico" style={{ background: 'var(--teal-deep)', width: '40px', height: '40px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: 'white' }}>
+              <ClipboardList className="w-5 h-5" style={{ color: 'white' }} />
+            </div>
+            <div className="body" style={{ flex: 1 }}>
+              <span className="kicker" style={{ color: 'var(--teal-deep)', fontWeight: 600 }}>Active Support Plan</span>
+              <h3 style={{ margin: '4px 0 8px', fontSize: '18px', fontWeight: 700 }}>{activeSupportPlan.title}</h3>
+              <p style={{ color: 'var(--muted)', fontSize: '13.5px', margin: '0 0 14px', lineHeight: 1.55 }}>
+                Your provider, <strong>{activeSupportPlan.providerName}</strong>, shared a pre-session preparation checklist. Completing these tasks will help you make the most of your upcoming session.
+              </p>
+              
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', alignItems: 'center', marginTop: '12px' }}>
+                <Link href="/support-plan" className="btn btn-soft btn-sm flex items-center gap-1">
+                  Open Support Plan Tracker <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ width: '120px', background: 'var(--surface-sunk)', height: '6px', borderRadius: '3px', overflow: 'hidden' }}>
+                    {(() => {
+                      const completed = activeSupportPlan.tasks?.filter((t: any) => t.completed).length || 0;
+                      const total = activeSupportPlan.tasks?.length || 0;
+                      const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+                      return (
+                        <div 
+                          className="bg-wise-teal h-full rounded-full" 
+                          style={{ width: `${percent}%`, background: 'var(--teal-deep)' }}
+                        />
+                      );
+                    })()}
+                  </div>
+                  <span style={{ fontSize: '12px', color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
+                    {(() => {
+                      const completed = activeSupportPlan.tasks?.filter((t: any) => t.completed).length || 0;
+                      const total = activeSupportPlan.tasks?.length || 0;
+                      return `${completed}/${total} completed`;
+                    })()}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Grid Main */}
         <div className="grid-main">
           {/* Left Card: Matched Options */}
@@ -374,6 +425,19 @@ function UserDashboardContent() {
                   </span>
                 </Link>
               </li>
+              {activeSupportPlan && (
+                <li className={activeSupportPlan.tasks?.every((t: any) => t.completed) ? 'done' : ''} style={{ padding: 0 }}>
+                  <Link href="/support-plan" style={{ display: 'flex', width: '100%', alignItems: 'center', gap: '12px', padding: '12px 14px', color: 'inherit' }}>
+                    <div className="box">
+                      {activeSupportPlan.tasks?.every((t: any) => t.completed) && <Check className="w-3 h-3 text-white" />}
+                    </div>
+                    <span className="label">Complete pre-session support plan</span>
+                    <span style={{ marginLeft: 'auto', fontSize: '11px', color: activeSupportPlan.tasks?.every((t: any) => t.completed) ? 'var(--muted)' : 'var(--teal-deep)', fontFamily: 'var(--font-mono)' }}>
+                      {activeSupportPlan.tasks?.every((t: any) => t.completed) ? 'Done' : 'Next'}
+                    </span>
+                  </Link>
+                </li>
+              )}
             </ul>
           </div>
         </div>

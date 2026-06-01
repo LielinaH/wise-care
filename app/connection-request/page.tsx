@@ -15,6 +15,7 @@ import PremiumCard from '@/components/ui/PremiumCard';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { firestoreHelpers } from '@/lib/firebase/firestore';
+import PatientChatPanel from '@/components/wise-care/PatientChatPanel';
 
 function ConnectionRequestContent() {
   const router = useRouter();
@@ -31,7 +32,24 @@ function ConnectionRequestContent() {
   const [submitting, setSubmitting] = useState(false);
   const [sentRequestsList, setSentRequestsList] = useState<any[]>([]);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [activeChatId, setActiveChatId] = useState<string | null>(null);
   
+  const showToast = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(null), 3000);
+  };
+  
+  const [showModal, setShowModal] = useState(false);
+  const [selectedReq, setSelectedReq] = useState<any | null>(null);
+  const [modalSlots, setModalSlots] = useState<{ date: string; timeSlots: string[]; }[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [bookingDate, setBookingDate] = useState('');
+  const [bookingTime, setBookingTime] = useState('');
+  const [bookingType, setBookingType] = useState('15-minute consultation');
+  const [bookingNotes, setBookingNotes] = useState('');
+  const [bookingInProgress, setBookingInProgress] = useState(false);
+  const [allProviders, setAllProviders] = useState<Provider[]>([]);
+
   const [shareToggles, setShareToggles] = useState<Record<string, boolean>>({
     concerns: true,
     timeline: true,
@@ -62,6 +80,10 @@ function ConnectionRequestContent() {
             status: r.status,
             providerId: r.providerId,
             providerName: r.providerName,
+            appointmentDate: r.appointmentDate,
+            appointmentTimeSlot: r.appointmentTimeSlot,
+            appointmentType: r.appointmentType,
+            appointmentNotes: r.appointmentNotes,
           }));
         setSentRequestsList(mapped);
       } catch (e) {
@@ -74,11 +96,105 @@ function ConnectionRequestContent() {
     }
   };
 
+  const handleOpenBookingModal = async (req: any) => {
+    setSelectedReq(req);
+    setShowModal(true);
+    setBookingDate('');
+    setBookingTime('');
+    setBookingNotes('');
+    setLoadingSlots(true);
+
+    let availability = 'Accepting new clients';
+    const foundProv = allProviders.find(p => p.id === req.providerId);
+    if (foundProv) {
+      availability = foundProv.nextAvailable || 'Accepting new clients';
+    }
+
+    try {
+      const res = await fetch('/api/ai/generate-slots', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ availability }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setModalSlots(data.slots || []);
+        if (data.slots && data.slots.length > 0) {
+          setBookingDate(data.slots[0].date);
+          if (data.slots[0].timeSlots && data.slots[0].timeSlots.length > 0) {
+            setBookingTime(data.slots[0].timeSlots[0]);
+          }
+        }
+      } else {
+        throw new Error('Failed to generate slots');
+      }
+    } catch (e) {
+      console.error("Failed to generate slots from AI:", e);
+      const fallback = [
+        { date: 'Monday, Jun 8', timeSlots: ['9:00 AM', '11:00 AM', '2:00 PM', '4:30 PM'] },
+        { date: 'Wednesday, Jun 10', timeSlots: ['10:00 AM', '1:00 PM', '3:00 PM'] },
+        { date: 'Friday, Jun 12', timeSlots: ['9:30 AM', '12:00 PM', '3:30 PM'] }
+      ];
+      setModalSlots(fallback);
+      setBookingDate(fallback[0].date);
+      setBookingTime(fallback[0].timeSlots[0]);
+    } finally {
+      setLoadingSlots(false);
+    }
+  };
+
+  const handleConfirmBooking = async () => {
+    if (!selectedReq || !bookingDate || !bookingTime) return;
+    setBookingInProgress(true);
+
+    const bookingDetails = {
+      date: bookingDate,
+      timeSlot: bookingTime,
+      type: bookingType,
+      notes: bookingNotes
+    };
+
+    if (isFirebaseMode) {
+      try {
+        await firestoreHelpers.scheduleReferralAppointment(selectedReq.id, bookingDetails);
+        await loadRequests();
+        setShowModal(false);
+        showToast(`Appointment booked successfully with ${selectedReq.providerName}!`);
+      } catch (e) {
+        console.error("Booking error:", e);
+        showToast("Error booking appointment. Please try again.");
+      } finally {
+        setBookingInProgress(false);
+      }
+    } else {
+      const allReferrals = storage.getReferrals();
+      const updated = allReferrals.map(r => {
+        if (r.id === selectedReq.id) {
+          return {
+            ...r,
+            appointmentDate: bookingDate,
+            appointmentTimeSlot: bookingTime,
+            appointmentType: bookingType,
+            appointmentNotes: bookingNotes
+          };
+        }
+        return r;
+      });
+      storage.setReferrals(updated);
+      setSentRequestsList(updated.filter(r => r.name === 'Member (Self)'));
+      
+      setBookingInProgress(false);
+      setShowModal(false);
+      showToast(`Appointment booked successfully with ${selectedReq.providerName}!`);
+    }
+  };
+
   useEffect(() => {
     async function init() {
       await loadRequests();
 
       let activePacket: any = null;
+      let resolvedProvs: Provider[] = [];
 
       if (isFirebaseMode && currentUser) {
         try {
@@ -89,66 +205,72 @@ function ConnectionRequestContent() {
         } catch (e) {
           console.error("Error loading patient packet from Firestore: ", e);
         }
+        
+        try {
+          const { solo, org } = await firestoreHelpers.getAllProviders();
+          const dbProvs: Provider[] = [];
+          solo.forEach(s => {
+            const availability = s.careDetails?.availability || s.availability || '';
+            dbProvs.push({
+              id: s.userId,
+              name: s.profile?.displayName || s.displayName || 'Solo Provider',
+              type: 'Solo Clinician',
+              licensure: s.licensure 
+                ? `${s.licensure.licenseType} (${s.licensure.licenseState})`
+                : `${s.licenseType || 'LMFT'} (${s.licenseState || 'California'})`,
+              specialty: s.careDetails?.specialties || s.specialties || [],
+              modality: s.careDetails?.modalities || s.modalities || ['Telehealth'],
+              insurance: s.careDetails?.acceptedCoverageOptions || s.coverageOptions || [],
+              slidingScale: s.careDetails?.slidingScaleAvailable || s.coverageOptions?.some(o => o.toLowerCase().includes('sliding')) || false,
+              nextAvailable: availability || '1-2 weeks',
+              sessionCost: s.careDetails?.selfPayRate || '$120 - $180',
+              matchScore: 90,
+              matchReason: ''
+            });
+          });
+
+          org.forEach(o => {
+            const availability = o.serviceDetails?.availability || o.availability || '';
+            dbProvs.push({
+              id: o.orgId,
+              name: o.organizationProfile?.organizationName || o.organizationName || 'Clinic Group',
+              type: 'Clinic Group',
+              licensure: 'Verified Facility',
+              specialty: o.serviceDetails?.specialties || o.specialties || [],
+              modality: o.serviceDetails?.modalities || o.modalities || ['Telehealth'],
+              insurance: o.serviceDetails?.acceptedCoverageOptions || o.coverageOptions || [],
+              slidingScale: o.serviceDetails?.slidingScaleAvailable || o.coverageOptions?.some(cov => cov.toLowerCase().includes('sliding')) || false,
+              nextAvailable: availability || 'Within a week',
+              sessionCost: '$60 - $150',
+              matchScore: 90,
+              matchReason: ''
+            });
+          });
+
+          resolvedProvs = dbProvs.length === 0 ? MOCK_PROVIDERS : dbProvs;
+        } catch (e) {
+          console.error("Error loading providers in request screen: ", e);
+          resolvedProvs = MOCK_PROVIDERS;
+        }
       } else {
         activePacket = storage.getCarePacket();
+        resolvedProvs = MOCK_PROVIDERS;
       }
 
       setPacket(activePacket);
+      setAllProviders(resolvedProvs);
 
-      // Find provider
+      // Find selected provider
       const pId = providerId || (isFirebaseMode ? '' : storage.getSavedProviders()[0]);
       if (pId) {
-        let found = MOCK_PROVIDERS.find(item => item.id === pId);
-        if (!found && isFirebaseMode) {
-          try {
-            const { solo, org } = await firestoreHelpers.getAllProviders();
-            const s = solo.find(x => x.userId === pId);
-            if (s) {
-              found = {
-                id: s.userId,
-                name: s.displayName,
-                type: 'Solo Clinician',
-                licensure: `${s.licenseType} (${s.licenseState})`,
-                specialty: s.specialties,
-                modality: s.modalities,
-                insurance: s.coverageOptions,
-                slidingScale: s.coverageOptions.some(o => o.toLowerCase().includes('sliding')),
-                nextAvailable: s.availability,
-                sessionCost: '$120 - $180',
-                matchScore: 90,
-                matchReason: 'Compatible provider.'
-              };
-            } else {
-              const o = org.find(x => x.orgId === pId);
-              if (o) {
-                found = {
-                  id: o.orgId,
-                  name: o.organizationName,
-                  type: 'Clinic Group',
-                  licensure: 'Verified Facility',
-                  specialty: o.specialties,
-                  modality: o.modalities,
-                  insurance: o.coverageOptions,
-                  slidingScale: true,
-                  nextAvailable: o.availability,
-                  sessionCost: '$60 - $150',
-                  matchScore: 90,
-                  matchReason: 'Compatible organization.'
-                };
-              }
-            }
-          } catch (e) {
-            console.error("Error loading provider from Firestore: ", e);
-          }
-        }
-        
+        const found = resolvedProvs.find(item => item.id === pId);
         if (found) {
           setProvider(found);
         } else {
-          setProvider(MOCK_PROVIDERS[0]); // Fallback
+          setProvider(resolvedProvs[0] || MOCK_PROVIDERS[0]);
         }
       } else {
-        setProvider(MOCK_PROVIDERS[0]); // Default fallback
+        setProvider(resolvedProvs[0] || MOCK_PROVIDERS[0]);
       }
     }
 
@@ -220,11 +342,6 @@ function ConnectionRequestContent() {
   };
 
   if (!hasProviderIdParam) {
-    const showToast = (msg: string) => {
-      setToastMsg(msg);
-      setTimeout(() => setToastMsg(null), 3000);
-    };
-
     const handleWithdraw = async (id: string) => {
       if (!confirm('Are you sure you want to withdraw this connection request? The provider will no longer see your Care Packet.')) {
         return;
@@ -297,51 +414,211 @@ function ConnectionRequestContent() {
               const status = req.status || 'pending';
 
               return (
-                <div key={req.id} className="conn-card">
-                  <div className="avatar">{initials}</div>
-                  <div>
-                    <div className="name">{pName}</div>
-                    <div className="meta">
-                      {req.route} · Sent {req.received}
+                <div key={req.id} className="flex flex-col w-full">
+                  <div className="conn-card">
+                    <div className="avatar">{initials}</div>
+                    <div>
+                      <div className="name">{pName}</div>
+                      <div className="meta">
+                        {req.route} · Sent {req.received}
+                      </div>
+                    </div>
+                    <div className="status-area">
+                      {status === 'accepted' ? (
+                        <>
+                          <span className="badge success"><span className="dot"></span>ACCEPTED</span>
+                          {req.appointmentDate ? (
+                            <div className="mt-2 p-2.5 bg-emerald-50 border border-emerald-100 rounded-lg text-left" style={{ maxWidth: '240px' }}>
+                              <div className="text-[11.5px] font-semibold text-emerald-950 flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                                <span>Intake Scheduled</span>
+                              </div>
+                              <div className="text-[11px] text-emerald-900 font-medium mt-0.5">{req.appointmentDate} · {req.appointmentTimeSlot}</div>
+                              <div className="text-[10px] text-wise-muted italic mt-0.5">{req.appointmentType}</div>
+                              {req.appointmentNotes && (
+                                <div className="text-[10px] text-wise-muted border-t border-emerald-100/40 pt-1 mt-1 pl-1 border-l border-emerald-300">
+                                  "{req.appointmentNotes}"
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <button 
+                              onClick={() => handleOpenBookingModal(req)} 
+                              className="btn btn-primary btn-xs py-1 px-2.5 text-[11px] font-semibold mt-1"
+                            >
+                              Schedule appointment
+                            </button>
+                          )}
+                          <button
+                            onClick={() => {
+                              if (!isFirebaseMode) {
+                                alert("Firebase Mode Required: This secure messaging feature requires an active Firestore database connection.");
+                                return;
+                              }
+                              setActiveChatId(activeChatId === req.id ? null : req.id);
+                            }}
+                            className={`btn btn-soft btn-xs py-1 px-2.5 text-[11px] font-semibold mt-2 w-full flex items-center justify-center gap-1 ${
+                              !isFirebaseMode ? 'opacity-50 cursor-not-allowed' : ''
+                            }`}
+                          >
+                            💬 {activeChatId === req.id ? 'Close Secure Chat' : 'Open Secure Chat'}
+                          </button>
+                        </>
+                      ) : status === 'waitlisted' ? (
+                        <>
+                          <span className="badge blue"><span className="dot"></span>WAITLISTED</span>
+                          <span className="status-msg">Added to waitlist</span>
+                          <Link href="/matching" className="btn btn-ghost btn-xs py-1 px-2.5 text-[11px] font-semibold mt-1">
+                            Find alternates
+                          </Link>
+                        </>
+                      ) : status === 'declined' ? (
+                        <>
+                          <span className="badge danger"><span className="dot"></span>DECLINED</span>
+                          <span className="status-msg">No current availability</span>
+                          <Link href="/matching" className="btn btn-ghost btn-xs py-1 px-2.5 text-[11px] font-semibold mt-1">
+                            Find alternates
+                          </Link>
+                        </>
+                      ) : (
+                        <>
+                          <span className="badge warn"><span className="dot"></span>PENDING</span>
+                          <span className="status-msg">Replies in 1-3 business days</span>
+                          <button onClick={() => handleWithdraw(req.id)} className="btn btn-ghost btn-xs py-1 px-2.5 text-[11px] font-semibold mt-1 text-wise-danger hover:bg-rose-50">
+                            Withdraw request
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
-                  <div className="status-area">
-                    {status === 'accepted' ? (
-                      <>
-                        <span className="badge success"><span className="dot"></span>ACCEPTED</span>
-                        <button onClick={() => handleSchedule(pName)} className="btn btn-primary btn-xs py-1 px-2.5 text-[11px] font-semibold mt-1">
-                          Schedule appointment
-                        </button>
-                      </>
-                    ) : status === 'waitlisted' ? (
-                      <>
-                        <span className="badge blue"><span className="dot"></span>WAITLISTED</span>
-                        <span className="status-msg">Added to waitlist</span>
-                        <Link href="/matching" className="btn btn-ghost btn-xs py-1 px-2.5 text-[11px] font-semibold mt-1">
-                          Find alternates
-                        </Link>
-                      </>
-                    ) : status === 'declined' ? (
-                      <>
-                        <span className="badge danger"><span className="dot"></span>DECLINED</span>
-                        <span className="status-msg">No current availability</span>
-                        <Link href="/matching" className="btn btn-ghost btn-xs py-1 px-2.5 text-[11px] font-semibold mt-1">
-                          Find alternates
-                        </Link>
-                      </>
-                    ) : (
-                      <>
-                        <span className="badge warn"><span className="dot"></span>PENDING</span>
-                        <span className="status-msg">Replies in 1-3 business days</span>
-                        <button onClick={() => handleWithdraw(req.id)} className="btn btn-ghost btn-xs py-1 px-2.5 text-[11px] font-semibold mt-1 text-wise-danger hover:bg-rose-50">
-                          Withdraw request
-                        </button>
-                      </>
-                    )}
-                  </div>
+                  {activeChatId === req.id && isFirebaseMode && (
+                    <div className="mb-4">
+                      <PatientChatPanel
+                        referralId={req.id}
+                        patientId={currentUser?.uid || ''}
+                        patientName={currentUser?.displayName || 'Patient'}
+                        providerName={pName}
+                        onClose={() => setActiveChatId(null)}
+                      />
+                    </div>
+                  )}
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* Scheduling Modal */}
+        {showModal && selectedReq && (
+          <div className="fixed inset-0 bg-wise-fg/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-wise-surface border border-wise-border rounded-3xl max-w-[480px] w-full p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <span className="kicker">Interactive Scheduler</span>
+                  <h3 className="h3 mt-1">Schedule Intake Session</h3>
+                  <p className="text-xs text-wise-muted mt-0.5">Booking with {selectedReq.providerName}</p>
+                </div>
+                <button 
+                  onClick={() => setShowModal(false)}
+                  className="w-7 h-7 rounded-full bg-wise-surface-2 flex items-center justify-center text-wise-muted hover:text-wise-fg text-sm font-semibold"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {loadingSlots ? (
+                <div className="py-12 flex flex-col items-center justify-center gap-3">
+                  <div className="w-8 h-8 rounded-full border-2 border-wise-teal border-t-transparent animate-spin"></div>
+                  <span className="text-xs text-wise-muted text-center">AI is parsing availability and generating slots...</span>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Select Date */}
+                  <div className="field">
+                    <label className="field-label">1. Choose Date</label>
+                    <div className="grid grid-cols-2 gap-2 mt-1">
+                      {modalSlots.map(slot => (
+                        <button
+                          key={slot.date}
+                          type="button"
+                          onClick={() => {
+                            setBookingDate(slot.date);
+                            if (slot.timeSlots && slot.timeSlots.length > 0) {
+                              setBookingTime(slot.timeSlots[0]);
+                            }
+                          }}
+                          className={`choice py-2.5 justify-center text-[12.5px] ${bookingDate === slot.date ? 'selected' : ''}`}
+                        >
+                          {slot.date}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Select Time Slot */}
+                  {bookingDate && (
+                    <div className="field">
+                      <label className="field-label">2. Select Time</label>
+                      <div className="grid grid-cols-3 gap-2 mt-1">
+                        {(modalSlots.find(s => s.date === bookingDate)?.timeSlots || []).map(time => (
+                          <button
+                            key={time}
+                            type="button"
+                            onClick={() => setBookingTime(time)}
+                            className={`choice py-2 justify-center text-[12px] ${bookingTime === time ? 'selected' : ''}`}
+                          >
+                            {time}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Appointment Type */}
+                  <div className="field">
+                    <label className="field-label">3. Session Type</label>
+                    <select
+                      value={bookingType}
+                      onChange={(e) => setBookingType(e.target.value)}
+                      className="select mt-1"
+                    >
+                      <option>15-minute consultation</option>
+                      <option>Initial intake assessment</option>
+                      <option>Standard therapy session</option>
+                    </select>
+                  </div>
+
+                  {/* Notes */}
+                  <div className="field">
+                    <label className="field-label">4. Clinical Notes / Intake Context (Optional)</label>
+                    <textarea
+                      value={bookingNotes}
+                      onChange={(e) => setBookingNotes(e.target.value)}
+                      className="textarea mt-1"
+                      placeholder="Add any specific context or scheduling notes for your provider here..."
+                      style={{ minHeight: '70px', fontSize: '13px' }}
+                    />
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex gap-3 pt-3">
+                    <button
+                      onClick={() => setShowModal(false)}
+                      className="btn btn-ghost flex-1 py-2.5 text-xs font-semibold justify-center"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleConfirmBooking}
+                      disabled={!bookingDate || !bookingTime || bookingInProgress}
+                      className="btn btn-primary flex-1 py-2.5 text-xs font-semibold justify-center"
+                    >
+                      {bookingInProgress ? 'Booking...' : 'Confirm Appointment'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

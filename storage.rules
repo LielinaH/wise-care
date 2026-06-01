@@ -1,0 +1,31 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // --- Helper Functions ---
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Helper to check if user has admin role in Firestore
+    function isAdmin() {
+      return isAuthenticated() && 
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // --- Provider Files Access Rules ---
+    match /providers/{userId}/{type}/{fileName} {
+      
+      // Profile Photos & Logos (public read, write by owner)
+      allow read: if type == 'photo' || type == 'logo' || isOwner(userId) || isAdmin();
+      allow write: if isOwner(userId);
+      
+      // Credential/Licensure/Business Documents (only owner and admin can read/write)
+      allow read, write: if (type == 'credential' || type == 'licensure') && (isOwner(userId) || isAdmin());
+    }
+  }
+}
