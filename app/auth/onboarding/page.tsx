@@ -10,7 +10,7 @@ const SPECIALTIES = ['Anxiety', 'Burnout', 'Sleep', 'Relationships', 'Work stres
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { currentUser, userProfile, role, isFirebaseMode, signOut } = useAuth();
+  const { currentUser, userProfile, role, isFirebaseMode, signOut, loading: authLoading } = useAuth();
 
   const [selectedRole, setSelectedRole] = useState<'patient' | 'solo_provider' | 'provider_org' | 'admin'>('patient');
   const [displayName, setDisplayName] = useState('');
@@ -46,6 +46,15 @@ export default function OnboardingPage() {
       setOrgName(initialName);
     }
   }, [currentUser]);
+
+  if (authLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-wise-surface gap-4">
+        <Loader2 className="w-8 h-8 text-wise-teal animate-spin" />
+        <p className="text-sm text-wise-muted font-medium">Loading profile details...</p>
+      </div>
+    );
+  }
 
   if (isFirebaseMode && currentUser && !role) {
     const handleRoleSubmit = async (e: React.FormEvent) => {
@@ -149,24 +158,48 @@ export default function OnboardingPage() {
               )}
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn btn-primary"
-              style={{ width: '100%', justifyContent: 'center' }}
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin text-white mr-1.5" style={{ animation: 'spin 1s linear infinite' }} />
-                  <span>Saving...</span>
-                </>
-              ) : (
-                <>
-                  <span>Continue</span>
-                  <ArrowRight className="w-4 h-4 ml-1" />
-                </>
-              )}
-            </button>
+            <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
+              <button
+                type="button"
+                onClick={async () => {
+                  setLoading(true);
+                  try {
+                    if (currentUser) {
+                      await firestoreHelpers.deleteUserAccount(currentUser.uid, '');
+                      await currentUser.delete();
+                    }
+                  } catch (err) {
+                    console.error("Failed to delete account on cancel:", err);
+                  }
+                  router.push('/');
+                  await signOut();
+                }}
+                className="btn btn-ghost"
+                style={{ flex: 1, justifyContent: 'center' }}
+                disabled={loading}
+              >
+                Cancel Registration
+              </button>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="btn btn-primary"
+                style={{ flex: 1, justifyContent: 'center' }}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-white mr-1.5" style={{ animation: 'spin 1s linear infinite' }} />
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Continue</span>
+                    <ArrowRight className="w-4 h-4 ml-1" />
+                  </>
+                )}
+              </button>
+            </div>
           </form>
         </div>
       </div>
@@ -234,8 +267,8 @@ export default function OnboardingPage() {
               reference2Status: 'not_sent',
             },
             verification: {
-              verificationStatus: 'pending',
-              submittedAt: new Date().toISOString(),
+              verificationStatus: 'draft',
+              submittedAt: null,
               adminNotes: '',
               itemStatuses: {},
               itemNotes: {},
@@ -283,8 +316,8 @@ export default function OnboardingPage() {
               reference2Status: 'not_sent',
             },
             verification: {
-              verificationStatus: 'pending',
-              submittedAt: new Date().toISOString(),
+              verificationStatus: 'draft',
+              submittedAt: null,
               adminNotes: '',
               itemStatuses: {},
               itemNotes: {},
@@ -404,7 +437,7 @@ export default function OnboardingPage() {
                 <div className="field">
                   <label className="field-label">License Type</label>
                   <select
-                    className="select"
+                    className="select pr-10"
                     value={licenseType}
                     onChange={e => setLicenseType(e.target.value)}
                   >
@@ -421,7 +454,7 @@ export default function OnboardingPage() {
                 <div className="field">
                   <label className="field-label">License State</label>
                   <select
-                    className="select"
+                    className="select pr-10"
                     value={licenseState}
                     onChange={e => setLicenseState(e.target.value)}
                   >
@@ -506,16 +539,24 @@ export default function OnboardingPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="field">
                   <label className="field-label">Modality</label>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px', marginTop: '4px' }}>
+                  <div className="flex gap-2 mt-1">
                     {(['Telehealth', 'In-person', 'Both'] as const).map(m => (
                       <button
                         key={m}
                         type="button"
                         onClick={() => setModality(m)}
                         className={`choice ${modality === m ? 'selected' : ''}`}
-                        style={{ padding: '8px', fontSize: '12px' }}
+                        style={{ 
+                          padding: '8px 4px', 
+                          fontSize: '12px', 
+                          flex: 1, 
+                          justifyContent: 'center', 
+                          alignItems: 'center', 
+                          textAlign: 'center',
+                          whiteSpace: 'nowrap'
+                        }}
                       >
-                        <span className="label">{m}</span>
+                        <span className="label" style={{ fontSize: '12px', fontWeight: 500 }}>{m}</span>
                       </button>
                     ))}
                   </div>
@@ -577,14 +618,22 @@ export default function OnboardingPage() {
             <button
               type="button"
               onClick={async () => {
+                setLoading(true);
+                try {
+                  if (currentUser) {
+                    await firestoreHelpers.deleteUserAccount(currentUser.uid, role || '');
+                    await currentUser.delete();
+                  }
+                } catch (err) {
+                  console.error("Failed to delete account on cancel:", err);
+                }
                 router.push('/');
-                setTimeout(async () => {
-                  await signOut();
-                }, 150);
+                await signOut();
               }}
+              disabled={loading}
               className="btn btn-ghost"
             >
-              Sign out
+              Cancel Registration
             </button>
             
             <button

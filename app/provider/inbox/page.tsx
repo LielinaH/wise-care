@@ -17,9 +17,10 @@ import ProviderChatPanel from '@/components/wise-care/ProviderChatPanel';
 import SupportPlanEditor from '@/components/wise-care/SupportPlanEditor';
 
 function ProviderInboxContent() {
-  const { currentUser, isFirebaseMode } = useAuth();
+  const { currentUser, role, isFirebaseMode } = useAuth();
   const [referrals, setReferrals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [verificationStatus, setVerificationStatus] = useState<string>('draft');
   const [selectedId, setSelectedId] = useState<string>('');
   const [filter, setFilter] = useState<'all' | 'new' | 'high'>('all');
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -30,6 +31,16 @@ function ProviderInboxContent() {
 
     if (isFirebaseMode) {
       try {
+        let vStatus = 'draft';
+        if (role === 'solo_provider') {
+          const profile = await firestoreHelpers.getSoloProviderProfile(currentUser.uid);
+          vStatus = profile?.verification?.verificationStatus || profile?.verificationStatus || 'draft';
+        } else if (role === 'provider_org') {
+          const profile = await firestoreHelpers.getProviderOrgProfile(currentUser.uid);
+          vStatus = profile?.verification?.verificationStatus || profile?.verificationStatus || 'draft';
+        }
+        setVerificationStatus(vStatus);
+
         const refs = await firestoreHelpers.getReferralsForProvider(currentUser.uid);
         const activeRefs = refs.filter(r => r.status !== 'withdrawn');
         
@@ -65,6 +76,7 @@ function ProviderInboxContent() {
         console.error("Error loading referrals from Firestore:", e);
       }
     } else {
+      setVerificationStatus('verified');
       const stored = storage.getReferrals();
       const activeRefs = stored.filter(r => r.status !== 'withdrawn');
       const list = activeRefs.length > 0 ? activeRefs : MOCK_REFERRALS;
@@ -78,7 +90,7 @@ function ProviderInboxContent() {
 
   useEffect(() => {
     loadInbox();
-  }, [currentUser, isFirebaseMode]);
+  }, [currentUser, isFirebaseMode, role]);
 
   useEffect(() => {
     setEditingPlan(false);
@@ -160,6 +172,49 @@ function ProviderInboxContent() {
         <div className="flex flex-col items-center justify-center py-20 gap-4">
           <Clock className="w-8 h-8 text-wise-teal animate-spin" />
           <p className="text-sm text-wise-muted">Loading referral inbox queue...</p>
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (verificationStatus !== 'verified') {
+    return (
+      <AppShell 
+        title="Referral inbox" 
+        crumbs={['Practice', 'Referrals']} 
+        actions={
+          <Link href="/provider/dashboard" className="btn btn-ghost btn-sm text-xs font-semibold">Dashboard</Link>
+        }
+      >
+        <div className="max-w-[600px] mx-auto py-12 enter">
+          <div className="card p-8 border border-wise-border bg-wise-surface shadow-xl rounded-2xl text-center flex flex-col items-center gap-6">
+            <div className="w-16 h-16 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600">
+              <Lock className="w-8 h-8" />
+            </div>
+            
+            <div>
+              <h2 className="h2 text-xl font-bold text-wise-fg">Inbox Locked</h2>
+              <p className="text-sm text-wise-muted mt-2 leading-relaxed max-w-[45ch] mx-auto">
+                {verificationStatus === 'draft' 
+                  ? 'Your practice parameters are currently in Draft status. Complete your profile setup to submit your credentials for validation.'
+                  : 'Your credentials verify request is currently pending administrator review. Clinical referrals and messaging inbox are locked until verification is complete.'}
+              </p>
+            </div>
+
+            <div className="flex gap-3 justify-center">
+              <Link href="/provider/dashboard" className="btn btn-soft">
+                Go to Dashboard
+              </Link>
+              {verificationStatus === 'draft' && (
+                <Link 
+                  href={role === 'provider_org' ? '/provider/org/register' : '/provider/solo/register'} 
+                  className="btn btn-primary"
+                >
+                  Complete Practice Profile
+                </Link>
+              )}
+            </div>
+          </div>
         </div>
       </AppShell>
     );

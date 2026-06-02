@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import AppShell from '@/components/layout/AppShell';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { useAuth } from '@/components/auth/AuthProvider';
@@ -10,18 +11,20 @@ import { storage } from '@/lib/storage';
 import { Referral } from '@/lib/types';
 import { ProviderOrgProfile } from '@/lib/firebase/types';
 import { MOCK_REFERRALS } from '@/lib/data/mockReferrals';
-import { Inbox, Settings, Users, Clock, Info, ArrowRight, Loader2, Building, AlertTriangle } from 'lucide-react';
+import { Inbox, Settings, Users, Clock, Info, ArrowRight, Loader2, Building, AlertTriangle, Lock } from 'lucide-react';
 import StatCard from '@/components/ui/StatCard';
 import Badge from '@/components/ui/Badge';
 import Notice from '@/components/ui/Notice';
 
 function OrgProviderDashboardContent() {
-  const { currentUser, isFirebaseMode } = useAuth();
+  const router = useRouter();
+  const { currentUser, isFirebaseMode, signOut } = useAuth();
   const [profile, setProfile] = useState<ProviderOrgProfile | null>(null);
   const [referrals, setReferrals] = useState<any[]>([]);
   const [accepting, setAccepting] = useState(true);
   const [supportPlans, setSupportPlans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
     async function loadDashboardData() {
@@ -29,19 +32,31 @@ function OrgProviderDashboardContent() {
 
       if (isFirebaseMode) {
         try {
+          let currentStatus = 'draft';
           const orgProfile = await firestoreHelpers.getProviderOrgProfile(currentUser.uid);
           if (orgProfile) {
             setProfile(orgProfile);
-            const isVerified = orgProfile.verificationStatus === 'verified';
+            const isVerified = (orgProfile.verification?.verificationStatus || orgProfile.verificationStatus) === 'verified';
             setAccepting(isVerified && orgProfile.availability !== 'No availability');
+            currentStatus = orgProfile.verification?.verificationStatus || orgProfile.verificationStatus || 'draft';
           }
           
-          const refs = await firestoreHelpers.getReferralsForProvider(currentUser.uid);
-          const activeRefs = refs.filter(r => r.status !== 'withdrawn');
-          setReferrals(activeRefs);
+          if (currentStatus !== 'draft') {
+            try {
+              const refs = await firestoreHelpers.getReferralsForProvider(currentUser.uid);
+              const activeRefs = refs.filter(r => r.status !== 'withdrawn');
+              setReferrals(activeRefs);
+            } catch (refsErr) {
+              console.error("Error loading org provider referrals:", refsErr);
+            }
 
-          const plans = await firestoreHelpers.getSupportPlansForProvider(currentUser.uid);
-          setSupportPlans(plans);
+            try {
+              const plans = await firestoreHelpers.getSupportPlansForProvider(currentUser.uid);
+              setSupportPlans(plans);
+            } catch (plansErr) {
+              console.error("Error loading org provider support plans:", plansErr);
+            }
+          }
         } catch (e) {
           console.error("Error loading org provider dashboard data: ", e);
         }
@@ -183,6 +198,138 @@ function OrgProviderDashboardContent() {
              key === 'identity' ? 'Identity & Profile Details' : key,
       note: itemNotes[key] || 'No specific notes provided.'
     }));
+
+  if (currentStatus === 'draft') {
+    return (
+      <AppShell
+        title="Clinic Onboarding"
+        crumbs={['Practice', 'Onboarding']}
+        actions={
+          <div className="flex gap-2">
+            <button 
+              disabled 
+              className="btn btn-ghost btn-sm opacity-50 cursor-not-allowed flex items-center gap-1.5"
+              style={{ opacity: 0.6, cursor: 'not-allowed' }}
+            >
+              <Lock className="w-3.5 h-3.5" />
+              <span>Insights (Locked)</span>
+            </button>
+            <button 
+              disabled 
+              className="btn btn-primary btn-sm opacity-50 cursor-not-allowed flex items-center gap-1.5"
+              style={{ opacity: 0.6, cursor: 'not-allowed' }}
+            >
+              <Lock className="w-3.5 h-3.5" />
+              <span>Referral inbox (Locked)</span>
+            </button>
+          </div>
+        }
+      >
+        <div className="max-w-[700px] mx-auto py-8 enter">
+          <div className="card p-8 border border-wise-border bg-wise-surface shadow-xl rounded-2xl relative overflow-hidden">
+            {/* Header background glow */}
+            <div className="absolute top-0 left-0 right-0 h-[6px] bg-gradient-to-r from-wise-teal via-teal-500 to-emerald-400"></div>
+            
+            <div className="mb-6">
+              <span className="kicker text-[11px] uppercase tracking-wider font-mono text-wise-teal font-semibold">Account Setup Required</span>
+              <h2 className="h2 mt-2 text-2xl font-bold text-wise-fg">Complete your Organization Profile</h2>
+              <p className="text-sm text-wise-muted mt-2 leading-relaxed">
+                Before your organization listing can go live and receive patient referrals or admin audits, you must finish setting up your clinic details, business licensure, and reference points.
+              </p>
+            </div>
+
+            {/* Timeline Steps */}
+            <div className="space-y-4 my-8 p-5 bg-wise-surface-2 border border-wise-hairline rounded-xl">
+              <h4 className="text-xs font-mono font-bold text-wise-muted tracking-wider uppercase mb-4">Setup Checklist Progress</h4>
+              
+              {/* Step 1 */}
+              <div className="flex items-start gap-4">
+                <div className="w-8 h-8 rounded-full bg-emerald-100 border border-emerald-200 text-emerald-800 flex items-center justify-center text-sm font-bold shrink-0">
+                  ✓
+                </div>
+                <div className="pt-0.5">
+                  <span className="text-sm font-bold text-wise-fg block">1. Credentials signup</span>
+                  <span className="text-xs text-wise-muted">Auth credentials and clinic parameter shell created.</span>
+                </div>
+              </div>
+
+              {/* Connector line */}
+              <div className="w-[2px] h-6 bg-emerald-300 ml-4 -my-2"></div>
+
+              {/* Step 2 */}
+              <div className="flex items-start gap-4">
+                <div className="w-8 h-8 rounded-full bg-amber-50 border-2 border-amber-300 text-amber-800 flex items-center justify-center text-sm font-bold shrink-0 animate-pulse">
+                  2
+                </div>
+                <div className="pt-0.5">
+                  <span className="text-sm font-bold text-wise-fg block flex items-center gap-1.5">
+                    2. Clinic Profile & Licensure
+                    <span className="badge warn py-0.5 px-1.5 text-[9px] uppercase tracking-wider">Action needed</span>
+                  </span>
+                  <span className="text-xs text-wise-muted">Provide business license number, accreditation docs, matching services parameters, and organization references.</span>
+                </div>
+              </div>
+
+              {/* Connector line */}
+              <div className="w-[2px] h-6 bg-wise-border ml-4 -my-2"></div>
+
+              {/* Step 3 */}
+              <div className="flex items-start gap-4">
+                <div className="w-8 h-8 rounded-full bg-wise-surface-2 border border-wise-hairline text-wise-muted flex items-center justify-center text-sm font-medium shrink-0">
+                  <Lock className="w-3.5 h-3.5" />
+                </div>
+                <div className="pt-0.5">
+                  <span className="text-sm font-bold text-wise-muted block">3. Administrator Audit & Live Matching</span>
+                  <span className="text-xs text-wise-muted">Platform admin audits your clinic credentials. Once approved, the organization will receive matched referrals.</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex justify-between items-center pt-4 border-t border-wise-hairline gap-4 flex-wrap">
+              <button
+                onClick={async () => {
+                  if (confirm("Are you sure you want to cancel your registration? This will permanently delete your login and setup draft data.")) {
+                    setCancelling(true);
+                    try {
+                      if (currentUser) {
+                        await firestoreHelpers.deleteUserAccount(currentUser.uid, 'provider_org');
+                        await currentUser.delete();
+                      }
+                      await signOut();
+                      router.push('/');
+                    } catch (err) {
+                      console.error("Failed to delete account on cancel:", err);
+                      alert("Error deleting account. Please sign out instead.");
+                    } finally {
+                      setCancelling(false);
+                    }
+                  }
+                }}
+                disabled={cancelling}
+                className="btn btn-danger btn-sm text-xs font-semibold"
+              >
+                {cancelling ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                    <span>Cancelling...</span>
+                  </>
+                ) : (
+                  'Cancel Registration'
+                )}
+              </button>
+
+              <Link href="/provider/org/register" className="btn btn-primary flex items-center gap-1.5">
+                <span>Complete Clinic Profile</span>
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell 

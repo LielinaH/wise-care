@@ -1,10 +1,14 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import AppShell from '@/components/layout/AppShell';
 import { Lock, Info, AlertTriangle, ShieldCheck, BarChart3, HelpCircle, Clock, Check, XCircle } from 'lucide-react';
 import { collection, getDocs, getCountFromServer } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from '@/lib/firebase/client';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import { useAuth } from '@/components/auth/AuthProvider';
+import { firestoreHelpers } from '@/lib/firebase/firestore';
 
 interface DonutSegment {
   label: string;
@@ -187,9 +191,12 @@ const RANGE_DATA: Record<string, RangeData> = {
   }
 };
 
-export default function OrgInsights() {
+function OrgInsightsContent() {
+  const { currentUser, role, isFirebaseMode } = useAuth();
   const [range, setRange] = useState<string>('30');
   const [activeTab, setActiveTab] = useState<'overview' | 'routes' | 'barriers' | 'safety'>('overview');
+  const [verificationStatus, setVerificationStatus] = useState<string>('draft');
+  const [loadingProfile, setLoadingProfile] = useState(true);
   
   const [liveStats, setLiveStats] = useState({
     patients: 0,
@@ -197,6 +204,24 @@ export default function OrgInsights() {
     referrals: 0,
     loading: true,
   });
+
+  useEffect(() => {
+    async function loadProfileStatus() {
+      if (!currentUser) return;
+      if (isFirebaseMode) {
+        try {
+          const profile = await firestoreHelpers.getProviderOrgProfile(currentUser.uid);
+          setVerificationStatus(profile?.verification?.verificationStatus || profile?.verificationStatus || 'draft');
+        } catch (e) {
+          console.error("Error fetching org profile status:", e);
+        }
+      } else {
+        setVerificationStatus('verified');
+      }
+      setLoadingProfile(false);
+    }
+    loadProfileStatus();
+  }, [currentUser, isFirebaseMode]);
 
   useEffect(() => {
     async function fetchLiveStats() {
@@ -288,6 +313,56 @@ export default function OrgInsights() {
   const svgWidth = 320;
   const svgHeight = 130;
   const { linePath, areaPath, points } = generateSvgLinePath(currentData.lineData, svgWidth, svgHeight);
+
+  const isAuthorized = role === 'admin' || verificationStatus === 'verified';
+
+  if (loadingProfile || liveStats.loading) {
+    return (
+      <AppShell title="Anonymous trends" crumbs={['Insights', 'Anonymous trends']}>
+        <div className="flex flex-col items-center justify-center py-20 gap-4">
+          <Clock className="w-8 h-8 text-wise-teal animate-spin" />
+          <p className="text-sm text-wise-muted">Loading insights...</p>
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (!isAuthorized) {
+    return (
+      <AppShell 
+        title="Anonymous trends" 
+        crumbs={['Insights', 'Anonymous trends']}
+      >
+        <div className="max-w-[600px] mx-auto py-12 enter">
+          <div className="card p-8 border border-wise-border bg-wise-surface shadow-xl rounded-2xl text-center flex flex-col items-center gap-6">
+            <div className="w-16 h-16 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600">
+              <Lock className="w-8 h-8" />
+            </div>
+            
+            <div>
+              <h2 className="h2 text-xl font-bold text-wise-fg">Insights Locked</h2>
+              <p className="text-sm text-wise-muted mt-2 leading-relaxed max-w-[45ch] mx-auto">
+                {verificationStatus === 'draft' 
+                  ? 'Your organization parameters are currently in Draft status. Complete your profile setup to submit your credentials for validation.'
+                  : 'Your credentials verify request is currently pending administrator review. Analytics insights are locked until verification is complete.'}
+              </p>
+            </div>
+
+            <div className="flex gap-3 justify-center">
+              <Link href="/provider/org/dashboard" className="btn btn-soft">
+                Go to Dashboard
+              </Link>
+              {verificationStatus === 'draft' && (
+                <Link href="/provider/org/register" className="btn btn-primary">
+                  Complete Clinic Profile
+                </Link>
+              )}
+            </div>
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell 
@@ -778,5 +853,13 @@ export default function OrgInsights() {
 
       </div>
     </AppShell>
+  );
+}
+
+export default function OrgInsights() {
+  return (
+    <ProtectedRoute allowedRoles={['provider_org', 'admin']}>
+      <OrgInsightsContent />
+    </ProtectedRoute>
   );
 }

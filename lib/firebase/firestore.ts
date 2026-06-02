@@ -546,6 +546,7 @@ export const firestoreHelpers = {
       'verification.verificationStatus': mappedStatus,
       'verification.adminNotes': notes,
       'verification.reviewedAt': serverTimestamp(),
+      'verificationStatus': mappedStatus,
       'updatedAt': serverTimestamp()
     });
   },
@@ -567,6 +568,7 @@ export const firestoreHelpers = {
       'verification.itemStatuses': itemStatuses,
       'verification.itemNotes': itemNotes,
       'verification.reviewedAt': serverTimestamp(),
+      'verificationStatus': status,
       'updatedAt': serverTimestamp()
     });
   },
@@ -931,7 +933,7 @@ export function parseSoloProviderProfile(data: any): SoloProviderProfile {
       modalities: data.modalities || data.careDetails?.modalities,
       coverageOptions: data.coverageOptions || data.careDetails?.acceptedCoverageOptions,
       availability: data.availability || data.careDetails?.availability,
-      verificationStatus: data.verificationStatus || data.verification?.verificationStatus,
+      verificationStatus: data.verification?.verificationStatus || data.verificationStatus || 'draft',
     };
   }
 
@@ -1044,7 +1046,7 @@ export function parseProviderOrgProfile(data: any): ProviderOrgProfile {
       updatedAt: data.updatedAt,
       organizationName: data.organizationName || data.organizationProfile?.organizationName,
       organizationType: data.organizationType || data.organizationProfile?.organizationType,
-      verificationStatus: data.verificationStatus || data.verification?.verificationStatus,
+      verificationStatus: data.verification?.verificationStatus || data.verificationStatus || 'draft',
       services: data.services || data.serviceDetails?.servicesOffered,
       specialties: data.specialties || data.serviceDetails?.specialties,
       modalities: data.modalities || data.serviceDetails?.modalities,

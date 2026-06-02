@@ -36,27 +36,112 @@ export async function POST(request: Request) {
       }
     }
 
-    // 3. Delete Firestore documents in an atomic batch
-    const batch = db.batch();
-    
-    // Delete role-specific profile document
-    if (role === 'patient') {
-      batch.delete(db.collection('patients').doc(uid));
-    } else if (role === 'solo_provider') {
-      batch.delete(db.collection('soloProviders').doc(uid));
-    } else if (role === 'provider_org') {
-      batch.delete(db.collection('providerOrganizations').doc(uid));
-    } else {
-      // Fallback: If role is unknown or document is missing, try deleting from all collections to be safe
-      batch.delete(db.collection('patients').doc(uid));
-      batch.delete(db.collection('soloProviders').doc(uid));
-      batch.delete(db.collection('providerOrganizations').doc(uid));
+    // 3. Query all related Firestore documents to delete
+    const refsToDelete: admin.firestore.DocumentReference[] = [];
+
+    // Add primary user profile documents
+    refsToDelete.push(userDocRef);
+    refsToDelete.push(db.collection('patients').doc(uid));
+    refsToDelete.push(db.collection('soloProviders').doc(uid));
+    refsToDelete.push(db.collection('providerOrganizations').doc(uid));
+
+    // Query referrals (both where patientId or providerId matches)
+    const [referralsPatientSnap, referralsProviderSnap] = await Promise.all([
+      db.collection('referrals').where('patientId', '==', uid).get(),
+      db.collection('referrals').where('providerId', '==', uid).get(),
+    ]);
+
+    const referralIds = new Set<string>();
+    const referralDocs: admin.firestore.QueryDocumentSnapshot[] = [];
+
+    for (const snap of [referralsPatientSnap, referralsProviderSnap]) {
+      for (const doc of snap.docs) {
+        if (!referralIds.has(doc.id)) {
+          referralIds.add(doc.id);
+          referralDocs.push(doc);
+        }
+      }
     }
 
-    // Delete primary users record
-    batch.delete(userDocRef);
+    // Add referrals to deletion list
+    for (const doc of referralDocs) {
+      refsToDelete.push(doc.ref);
+    }
 
-    await batch.commit();
+    // Query messages under each referral
+    if (referralDocs.length > 0) {
+      const messagesSnaps = await Promise.all(
+        referralDocs.map(doc => 
+          db.collection('referrals').doc(doc.id).collection('messages').get()
+        )
+      );
+      for (const snap of messagesSnaps) {
+        for (const doc of snap.docs) {
+          refsToDelete.push(doc.ref);
+        }
+      }
+    }
+
+    // Query supportPlans (patientId or providerId matches)
+    const [supportPlansPatientSnap, supportPlansProviderSnap] = await Promise.all([
+      db.collection('supportPlans').where('patientId', '==', uid).get(),
+      db.collection('supportPlans').where('providerId', '==', uid).get(),
+    ]);
+
+    const planIds = new Set<string>();
+    for (const snap of [supportPlansPatientSnap, supportPlansProviderSnap]) {
+      for (const doc of snap.docs) {
+        if (!planIds.has(doc.id)) {
+          planIds.add(doc.id);
+          refsToDelete.push(doc.ref);
+        }
+      }
+    }
+
+    // Query followUps where patientId matches
+    const followUpsSnap = await db.collection('followUps').where('patientId', '==', uid).get();
+    for (const doc of followUpsSnap.docs) {
+      refsToDelete.push(doc.ref);
+    }
+
+    // Query careRoutes where patientId matches
+    const careRoutesSnap = await db.collection('careRoutes').where('patientId', '==', uid).get();
+    for (const doc of careRoutesSnap.docs) {
+      refsToDelete.push(doc.ref);
+    }
+
+    // Query carePackets where patientId matches
+    const carePacketsSnap = await db.collection('carePackets').where('patientId', '==', uid).get();
+    for (const doc of carePacketsSnap.docs) {
+      refsToDelete.push(doc.ref);
+    }
+
+    // Query providerVerificationRequests (providerId or submittedBy matches)
+    const [verifyProviderSnap, verifySubmitSnap] = await Promise.all([
+      db.collection('providerVerificationRequests').where('providerId', '==', uid).get(),
+      db.collection('providerVerificationRequests').where('submittedBy', '==', uid).get(),
+    ]);
+
+    const verifyIds = new Set<string>();
+    for (const snap of [verifyProviderSnap, verifySubmitSnap]) {
+      for (const doc of snap.docs) {
+        if (!verifyIds.has(doc.id)) {
+          verifyIds.add(doc.id);
+          refsToDelete.push(doc.ref);
+        }
+      }
+    }
+
+    // 4. Batch delete all gathered document references in chunks of 400
+    const chunkSize = 400;
+    for (let i = 0; i < refsToDelete.length; i += chunkSize) {
+      const chunk = refsToDelete.slice(i, i + chunkSize);
+      const deleteBatch = db.batch();
+      for (const ref of chunk) {
+        deleteBatch.delete(ref);
+      }
+      await deleteBatch.commit();
+    }
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
