@@ -346,7 +346,6 @@ function ProviderMatchingPageContent() {
               <div>
                 <h4 className="font-semibold text-[14.5px] text-wise-teal-deep flex items-center gap-1.5 m-0">
                   AI-Enabled Match Engine
-                  <span className="text-[10px] font-bold tracking-wider uppercase bg-wise-teal/10 text-wise-teal-deep py-0.5 px-2.5 rounded-full">Gemini 2.5</span>
                 </h4>
                 <p className="text-[12.5px] text-wise-muted leading-relaxed m-0 mt-0.5" style={{ maxWidth: '60ch' }}>
                   Ranks providers by clinical suitability and practical constraints using advanced AI analysis.

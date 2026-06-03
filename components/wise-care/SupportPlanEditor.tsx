@@ -299,7 +299,7 @@ export default function SupportPlanEditor({
             ) : (
               <>
                 <Sparkles className="w-3.5 h-3.5 text-[var(--teal-deep)]" />
-                ✨ Draft with Gemini AI
+                ✨ Draft with AI
               </>
             )}
           </button>

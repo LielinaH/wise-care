@@ -109,6 +109,12 @@ export const firestoreHelpers = {
     }, { merge: true });
   },
 
+  getAllPatients: async (): Promise<PatientProfile[]> => {
+    if (!isFirebaseConfigured || !db) return [];
+    const snap = await getDocs(collection(db, 'patients'));
+    return snap.docs.map(doc => doc.data() as PatientProfile);
+  },
+
   // --- Solo Provider helpers ---
   getSoloProviderProfile: async (uid: string): Promise<SoloProviderProfile | null> => {
     if (!isFirebaseConfigured || !db) return null;
