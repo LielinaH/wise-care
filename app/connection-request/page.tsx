@@ -697,9 +697,7 @@ function ConnectionRequestContent() {
           </ul>
         </div>
 
-        <p style={{ marginTop: '28px', fontSize: '12.5px', color: 'var(--muted)' }}>
-          Need urgent help? <a href="#" style={{ color: 'var(--teal-deep)', fontWeight: 500 }}>988 Suicide & Crisis Lifeline</a> · <a href="#" style={{ color: 'var(--teal-deep)', fontWeight: 500 }}>911 for emergencies</a>
-        </p>
+
       </div>
     );
   }
@@ -944,7 +942,7 @@ function ConnectionRequestContent() {
       </div>
 
       <Notice variant="standard" title="Security & Privacy" className="mt-6">
-        This is a demo prototype. Do not enter real medical or personal health information. Wise Care does not diagnose, provide therapy, prescribe medication, or replace a licensed professional.
+        This is a simulated workspace. Nothing is shared with a provider unless you consent.
       </Notice>
     </div>
   );

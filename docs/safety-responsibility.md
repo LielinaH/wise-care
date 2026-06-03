@@ -25,10 +25,3 @@ When calling the Gemini API for standard care routing, the system prompts contai
 ### Layer C: HIPAA & Consent Guidelines
 - **Consent Gate:** Sharing summaries with provider clinics requires an active consent checkbox tick. 
 - **Employee Privacy:** Employer and university portal dashboards are restricted to aggregated, anonymized trends. Single patient files can never be viewed.
-
----
-
-## 2. On-Page Safety Copy
-The following disclaimers are persistently displayed on user, provider, and matching screens:
-> *"Wise Care does not diagnose, provide therapy, prescribe medication, or replace a licensed professional."*
-> *"If you may be in immediate danger or thinking about harming yourself, contact emergency services or a crisis hotline (988 or 911) immediately."*

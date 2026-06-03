@@ -305,14 +305,7 @@ export default function LandingPage() {
               <h2 className="h2 mt-3.5 mb-3.5">Built with the seriousness this work demands.</h2>
               <p className="lede">Wise Care is for navigation, not treatment. We are explicit about what we do and what we will never do because the people who reach us deserve clarity, not hype.</p>
 
-              <div className="notice danger mt-5">
-                <AlertTriangle className="ico w-5 h-5 shrink-0 mt-0.5 text-wise-danger" />
-                <div>
-                  <strong>If you may be in immediate danger or thinking about harming yourself, please reach out now.</strong>
-                  <div className="mono text-[12.5px] mt-1.5 font-semibold">988 Suicide & Crisis Lifeline · call or text 988</div>
-                  <div className="mono text-[12.5px] font-semibold">Emergency · 911</div>
-                </div>
-              </div>
+
             </div>
             
             <div className="safety-pillars">
@@ -414,15 +407,12 @@ export default function LandingPage() {
               <h5>Safety</h5>
               <ul>
                 <li><a href="#safety">Responsible use</a></li>
-                <li><a href="#safety">Crisis support · 988</a></li>
                 <li><a href="#safety">Privacy & consent</a></li>
-                <li><a href="#safety">What we are not</a></li>
               </ul>
             </div>
           </div>
           <div className="foot-bottom">
             <span>© Wise Care - prototype only · simulated data · v0.1</span>
-            <span className="mono">Not a clinical service. If in immediate danger, call 988 or 911.</span>
           </div>
         </div>
       </footer>

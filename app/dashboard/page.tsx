@@ -196,11 +196,11 @@ function UserDashboardContent() {
                 <Shield className="w-4 h-4 text-wise-teal-deep shrink-0 mt-0.5" />
                 <span>
                   {hasCompletedIntake && intake.safety !== 'immediate' ? (
-                    <><strong>Safety check passed.</strong> No immediate risk indicators. If anything changes, crisis support is always one tap away.</>
+                    <><strong>Safety check passed.</strong> No immediate risk indicators detected.</>
                   ) : intake.safety === 'immediate' ? (
-                    <><strong style={{ color: 'var(--danger)' }}>Crisis flag triggered.</strong> Crisis/hotline support routing is priority.</>
+                    <><strong style={{ color: 'var(--danger)' }}>Crisis flag triggered.</strong> Crisis support routing is priority.</>
                   ) : (
-                    <><strong>Private &amp; local.</strong> Your information is stored in a Firebase-backed demo database. Do not enter real medical or personal health information. Nothing is shared with a provider unless you explicitly send a simulated connection request.</>
+                    <><strong>Private &amp; local.</strong> Your information is stored in a Firebase-backed demo database. Nothing is shared with a provider unless you explicitly choose to send a simulated connection request.</>
                   )}
                 </span>
               </div>
@@ -491,10 +491,7 @@ function UserDashboardContent() {
         <div className="notice">
           <Info className="w-4 h-4 text-wise-teal shrink-0 mt-0.5" />
           <div>
-            <strong style={{ color: 'var(--fg)' }}>A reminder.</strong> Wise Care helps with navigation and preparation. It does not diagnose, treat, or prescribe. If you ever feel in immediate danger, call or text <strong>988</strong> or call <strong>911</strong>.
-            <div className="text-[12px] text-wise-muted mt-2">
-              For this prototype, your information is stored in a Firebase-backed demo database. Do not enter real medical or personal health information. Nothing is shared with a provider unless you explicitly send a simulated connection request.
-            </div>
+            <strong>Prototype environment.</strong> Your information is stored securely in a Firebase-backed demo database. Nothing is shared with a provider unless you explicitly choose to send a simulated connection request.
           </div>
         </div>
       </div>

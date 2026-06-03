@@ -367,13 +367,10 @@ function CareRoutePageContent() {
         </div>
 
         {/* Safety Disclaimer */}
-        <div className="notice warn">
-          <Info className="w-[18px] h-[18px] shrink-0 text-wise-warn mt-0.5" />
+        <div className="notice">
+          <Info className="w-4 h-4 text-wise-teal shrink-0 mt-0.5" />
           <div>
-            <strong>Important.</strong> Wise Care is a navigation tool, not a clinical service. The recommendations above are starting points for a conversation with a licensed professional, they are not a diagnosis, treatment plan, or prescription. If your symptoms worsen, please reach out to a clinician or, in a crisis, call or text <strong>988</strong>.
-            <div className="text-[12px] text-wise-muted mt-2">
-              This is a demo prototype. Do not enter real medical or personal health information. Wise Care does not diagnose, provide therapy, prescribe medication, or replace a licensed professional.
-            </div>
+            <strong>Prototype care route.</strong> This is an algorithmic summary based on your intake selections. Nothing is shared with a provider unless you consent to send a Care Packet.
           </div>
         </div>
 

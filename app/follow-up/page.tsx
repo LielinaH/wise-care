@@ -303,15 +303,7 @@ function FollowUpPageContent() {
           </div>
         )}
 
-        {symptoms === 'much-worse' && (
-          <div className="notice danger" style={{ marginTop: '14px' }}>
-            <AlertTriangle className="w-4 h-4 text-wise-danger shrink-0 mt-0.5" />
-            <div>
-              <strong>If things feel much worse, please reach out now.</strong> You don't have to wait for a scheduled appointment. 
-              Call or text <strong>988</strong>, or call <strong>911</strong> in an emergency. These services are for exactly this moment.
-            </div>
-          </div>
-        )}
+
 
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '24px', gap: '12px', flexWrap: 'wrap' }}>
           <Link href="/dashboard" className="btn btn-ghost flex items-center gap-1.5">

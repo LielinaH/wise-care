@@ -179,9 +179,7 @@ export default function SignInPage() {
         </div>
       </div>
 
-      <div className="auth-foot">
-        Need urgent help? <Link href="/intake">988 Suicide &amp; Crisis Lifeline</Link> · <Link href="/intake">911 for emergencies</Link>
-      </div>
+
 
     </div>
   );

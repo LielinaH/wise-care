@@ -607,12 +607,7 @@ function IntakePageContent() {
           </div>
         </PremiumCard>
 
-        {/* Notices */}
-        <div style={{ marginTop: '20px' }}>
-          <Notice variant="warn" title="Immediate need?">
-            You do not need to finish this intake. Call or text the <strong>988 Suicide &amp; Crisis Lifeline</strong> anytime for direct, free, and confidential professional help.
-          </Notice>
-        </div>
+
 
       </div>
     </AppShell>
