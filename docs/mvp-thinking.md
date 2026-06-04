@@ -12,10 +12,11 @@ Instead of trying to build a comprehensive clinical portal, the MVP focuses heav
 4. **Targeted Provider Matching:** Scores simulated providers using a lightweight, transparent matching engine rather than complex machine learning models.
 5. **Care Packet & Direct Connection:** Generates a pre-written outreach message and briefing summary to minimize outreach anxiety.
 
-## 2. Technical Compromises for Validation
-- **Local Storage Persistence:** For a prototype, setting up a database (PostgreSQL/MongoDB) and authentication (Auth0/NextAuth) adds significant delay. We utilize browser `localStorage` to persist intake details, saved providers, and referrals. This allows simulated interactions (e.g. User submits connection -> Provider inbox updates) to function out-of-the-box.
-- **Synthetic Directory Data:** Using real provider data requires scraping, API keys, or directory licensing. We seed the prototype with a diverse set of synthetic clinics representing standard archetypes (Private practice, psychiatric evaluation, support group, community clinic, crisis hotline) to test matching behaviors.
-- **Mock Portals for Stakeholders:** Instead of creating separate deployment targets for Providers, Admins, and Organizations, we include a demo role switcher in the sidebar layout. This allows stakeholders to inspect how data aggregates across different portals instantly within a single session.
+## 2. Technical Scope & Architecture
+- **Firebase-First Architecture:** The core platform leverages Firebase Auth for user management, Cloud Firestore for multi-role profile persistence (patients, solo providers, clinics, admins), and Firebase Storage for uploading and managing verification credentials.
+- **Developer Fallback Mode:** To ensure evaluators can run the full flow out-of-the-box without requiring active Firebase credentials or Gemini API keys, the system includes a **Developer Fallback Mode**. If environment keys are missing, the system gracefully shifts state management to browser `localStorage` and falls back to local template matches for AI generations, displaying a persistent banner.
+- **Unified Testing Environment:** Rather than deploying separate sites for patients, clinicians, clinic administrators, and platform admins, the prototype features an interactive **Role Switcher** in the sidebar. This allows developers to simulate multi-role behaviors (e.g. a patient submitting a referral, switching roles to clinic organization, and accepting the referral) dynamically.
+- **Synthetic Directory Seeding:** We seed the Firestore database with a diverse set of synthetic provider records representing standard clinical archetypes (Private practice, psychiatric evaluation, support group, community clinic, crisis hotline) to test deterministic and AI matching criteria.
 
 ## 3. Gemini AI Workflow Architecture
 We prioritized two core server-side AI integrations:

@@ -21,7 +21,8 @@ import {
   LogOut,
   Info,
   Users,
-  ListTodo
+  ListTodo,
+  HelpCircle
 } from 'lucide-react';
 import { useAuth } from '@/components/auth/AuthProvider';
 import DemoRoleSwitcher from './DemoRoleSwitcher';
@@ -51,6 +52,7 @@ export default function AppShell({ children, title, crumbs = [], actions }: AppS
   const router = useRouter();
   const { role, signOut, isFirebaseMode } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   const navs: Record<string, NavSection[]> = {
     patient: [
@@ -243,7 +245,17 @@ export default function AppShell({ children, title, crumbs = [], actions }: AppS
               {title}
             </div>
           </div>
-          {actions && <div className="topbar-actions">{actions}</div>}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            {actions && <div className="topbar-actions">{actions}</div>}
+            <button
+              onClick={() => setIsHelpOpen(true)}
+              className="btn btn-quiet rounded-full w-8 h-8 flex items-center justify-center p-0 text-wise-muted hover:text-wise-fg hover:bg-wise-surface-2 transition-all border border-wise-border"
+              title="Platform guide & flow"
+              style={{ cursor: 'pointer' }}
+            >
+              <HelpCircle className="w-4.5 h-4.5" />
+            </button>
+          </div>
         </header>
 
         {/* Workspace Area */}
@@ -251,6 +263,81 @@ export default function AppShell({ children, title, crumbs = [], actions }: AppS
           {children}
         </main>
       </div>
+
+      {isHelpOpen && (
+        <div 
+          className="fixed inset-0 bg-wise-fg/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => setIsHelpOpen(false)}
+        >
+          <div 
+            className="bg-wise-surface border border-wise-border rounded-3xl max-w-[620px] w-full p-6 shadow-2xl overflow-y-auto max-h-[85vh] animate-in fade-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+            style={{ color: 'var(--fg)' }}
+          >
+            <div className="flex justify-between items-start border-b border-wise-hairline pb-4 mb-4">
+              <div>
+                <span className="kicker" style={{ color: 'var(--teal-deep)', fontWeight: 600 }}>Interactive System Guide</span>
+                <h3 className="h3 mt-1" style={{ fontSize: '20px', fontWeight: 700 }}>Wise Care Platform Flow</h3>
+              </div>
+              <button 
+                onClick={() => setIsHelpOpen(false)}
+                className="w-7 h-7 rounded-full bg-wise-surface-2 flex items-center justify-center text-wise-muted hover:text-wise-fg text-sm font-semibold"
+                style={{ border: 'none', cursor: 'pointer' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', fontSize: '13.5px', lineHeight: '1.6' }}>
+              <div style={{ background: 'var(--teal-soft)', padding: '14px 16px', border: '1px solid oklch(58% 0.085 195 / 0.18)', borderRadius: 'var(--r-md)', fontSize: '13px', color: 'oklch(32% 0.07 200)' }}>
+                <strong>How to test this prototype:</strong> Use the <strong>Role Switcher</strong> at the bottom of the sidebar to switch dynamically between the Patient, Clinician, Organization, and Admin panels to see how data flows in real-time.
+              </div>
+
+              <div>
+                <h4 style={{ fontWeight: 700, color: 'var(--fg)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14.5px' }}>
+                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--teal-deep)' }}></span>
+                  1. Patient Flow (Care Seeker)
+                </h4>
+                <ul style={{ paddingLeft: '18px', listStyleType: 'disc', color: 'var(--muted)' }} className="space-y-1">
+                  <li><strong>Intake Form:</strong> Complete the multi-step concern check-in.</li>
+                  <li><strong>Safety Filter:</strong> Backend scans for crisis keywords before invoking Gemini.</li>
+                  <li><strong>Care Route &amp; Packet:</strong> AI generates your route and drafts a clinician brief (SOAP format).</li>
+                  <li><strong>Connection Request:</strong> Request connections to matched providers, sharing briefs with consent.</li>
+                  <li><strong>Follow-up:</strong> Prompted check-in redirects to secondary paths if barriers arise.</li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 style={{ fontWeight: 700, color: 'var(--fg)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14.5px' }}>
+                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--teal-deep)' }}></span>
+                  2. Provider &amp; Organization Flow (Clinicians)
+                </h4>
+                <ul style={{ paddingLeft: '18px', listStyleType: 'disc', color: 'var(--muted)' }} className="space-y-1">
+                  <li><strong>Referral Inbox:</strong> View incoming connection briefs (goals, timelines, impact).</li>
+                  <li><strong>Acceptance &amp; Scheduling:</strong> Accept requests and use AI slots parser to book appointments.</li>
+                  <li><strong>Support Plans:</strong> Draft and share pre-session self-reflection checklists with clients.</li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 style={{ fontWeight: 700, color: 'var(--fg)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14.5px' }}>
+                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--teal-deep)' }}></span>
+                  3. Operations &amp; Insights Flow (Admin / Enterprises)
+                </h4>
+                <ul style={{ paddingLeft: '18px', listStyleType: 'disc', color: 'var(--muted)' }} className="space-y-1">
+                  <li><strong>Credential Verification:</strong> Approve or reject pending solo/clinic directory listings.</li>
+                  <li><strong>Enterprise Insights:</strong> Monitor aggregate, anonymous employee EAP utilization trends.</li>
+                </ul>
+              </div>
+
+              <div style={{ borderTop: '1px solid var(--hairline)', paddingTop: '14px', marginTop: '10px', display: 'flex', justifyContent: 'space-between', fontSize: '11.5px', color: 'var(--muted-2)' }}>
+                <span>Next.js App Router · Vanilla CSS</span>
+                <span>Google Gemini API · Cloud Firestore</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
