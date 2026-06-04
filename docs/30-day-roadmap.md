@@ -1,11 +1,11 @@
 # 30-Day Production Roadmap: Wise Care Platform
 
-This roadmap details the next phase of engineering and clinical/legal review needed to move the Wise Care prototype into a production-quality beta release.
+This roadmap details the next phase of engineering and clinical/legal review needed to transition the Wise Care prototype into a production-grade, compliance-reviewed beta.
 
 ---
 
 ## Week 1: Secure Infrastructure & Authentication
-### Goal: Establish data security policies and initiate a HIPAA-readiness review.
+### Goal: Achieve HIPAA-readiness, BAA/vendor review, MFA, audit logging, encryption, and legal/clinical review.
 - **Multi-Factor Authentication (MFA):** Implement secure MFA login for Patients and Providers.
 - **Secure Data Infrastructure:** Set up PostgreSQL on an encrypted cloud host (e.g., Aptible, AWS RDS with KMS encryption) and prepare for a production security review.
 - **Clinician NPI Verification:** Integrate with the **NPPES Registry API** to automatically search NPI numbers during provider registration to verify active clinical status.

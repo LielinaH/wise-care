@@ -58,7 +58,7 @@ Wise Care resolves systemic frictions for multiple stakeholders within the healt
 
 ### Stakeholder Value Matrix
 * **Patients:** Reduces search fatigue, demystifies insurance, and generates clear, copy-pasteable outreach messages, shortening the time-to-care.
-* **Clinicians & Group Practices:** Delivers pre-prepared intake briefs (SOAP format) containing timelines, daily impact, and goals. This reduces clinician administrative burden, decreases intake drop-off, and increases slot utilization.
+* **Clinicians & Group Practices:** Delivers pre-prepared intake briefs (SOAP-style layout) containing timelines, daily impact, and goals. This reduces clinician administrative burden, decreases intake drop-off, and increases slot utilization.
 * **Employers & Universities:** Offers a private, structured entry point for employees/students seeking support, boosting Employee Assistance Program (EAP) utilization and reducing absenteeism.
 * **Insurers & Public Payers:** Guides members to appropriate in-network care paths before symptoms escalate, reducing expensive emergency room utilization.
 
@@ -70,13 +70,18 @@ Wise Care enforces a strict **privacy-first data policy**. User health data, sea
 
 ---
 
-## 3. MVP Scoping & Strategic Decisions
+## 3. Core MVP Strategy & Production Architecture
 
-To validate the product thesis rapidly, the Wise Care platform is engineered as a Firebase-backed system with database persistence, user authentication, and storage uploads. At the same time, it includes developer fallbacks and demo capabilities to allow rapid review:
+Wise Care is engineered around a secure, Firebase-backed full-stack architecture to validate the care navigation workflow:
 
-* **No Conversational Chatbots:** Interactive chatbots introduce open-ended anxiety and state-tracking complexities. The platform uses a structured multi-step form to collect metrics cleanly and predictably.
-* **Firebase-First Architecture:** The core system uses Firebase Auth, Cloud Firestore, and Firebase Storage to manage data and files securely.
-* **Developer Fallback Mode (Out-of-the-Box Execution):** If Firebase or Gemini environment variables are missing, the application automatically falls back to **Developer Mode**. It utilizes browser `localStorage` for temporary state management and local mock templates for AI generation, showing a persistent fallback banner. This guarantees that evaluators can run the full platform flow immediately without API keys.
+* **No Conversational Chatbots:** The platform deliberately avoids open-ended chat inputs, instead utilizing structured forms to capture symptom intensity, daily impact, and state licensure variables cleanly and predictably.
+* **Full-Stack Firebase Integration:** The core production architecture is built upon:
+  * **Firebase Authentication:** Handles secure user authentication, signup, and login workflows.
+  * **Cloud Firestore:** Persists multi-role account profiles, intake results, referrals, chat logs, and support plans.
+  * **Firebase Storage:** Uploads and hosts provider credential documents, licenses, profile photos, and organization logos.
+* **Server-Side API Routes:** Connects frontend inputs securely to the server-side Gemini API client for structured, cautious plan generation.
+* **Firestore-Based Directory Matching:** Queries active provider documents directly from Firestore, applying location, modality, insurance, and specialty weights to compute deterministic compatibility scores.
+* **Administrative Credentials Queue:** Features a robust provider verification dashboard allowing platform administrators to review upload evidence and manage verification statuses.
 * **Integrated Stakeholder Roles:** To allow testing across all interfaces (Patient, Provider, Organization, Admin) within a single browser session, the sidebar includes an interactive **Role Switcher** that changes roles dynamically (syncing state in Firestore or localStorage depending on the active mode).
 * **Synthetic Directory Seeding:** Populated with diverse provider archetypes (Private practice, psychiatric evaluation, support group, community clinic, crisis hotline) stored in Firestore to test matching behaviors without scraping real registries.
 
@@ -290,7 +295,7 @@ The platform uses Next.js (App Router), styled with clean vanilla CSS, and uses 
 
 #### 6. `carePackets`
 * **Path:** `/carePackets/{packetId}`
-* **Role:** SOAP intake briefs, daily life impact summaries, and outreach drafts.
+* **Role:** SOAP-style intake summaries, daily life impact lists, and outreach drafts.
 
 #### 7. `referrals`
 * **Path:** `/referrals/{referralId}`
@@ -333,36 +338,43 @@ The system manages the following file uploads:
 * **credentialDocument:** Uploaded by clinics to prove business standing.
 
 > [!IMPORTANT]
-> **Demo Upload Boundary:** In demo mode (when Firebase environment variables are not configured), uploads generate mock metadata with `demoOnly: true` and null storage paths. Users should not upload real medical, legal, or personal credential documents to the demo version.
+> **Demo Upload Warning:** In demo mode (when Firebase environment variables are not configured), uploads generate mock metadata with `demoOnly: true` and null storage paths. Users should not upload real medical, legal, or personal credential documents to the demo version.
+
+### Storage Security Rules (`storage.rules`)
+
+Secure access to uploaded provider assets is enforced via `storage.rules`:
+* **Public Reads:** Allowed for profile photos (`photo`) and clinic logos (`logo`) to let anyone view active directories.
+* **Restricted Reads/Writes:** Licensure files (`licensure`) and credential documents (`credential`) are private. Only the owner of the document (matching `request.auth.uid`) or platform administrators can read or write these files.
 
 ---
 
 ## 6. What is Real vs. Simulated
 
-The platform maintains a clear boundary between real functional features and simulated workflows for prototype testing:
+The platform maintains a clear boundary between real functional features and simulated workflows:
 
 ### Real Features (Implemented)
-* **Firebase Authentication:** Real sign-up, sign-in, and role assignment.
-* **Firestore Data Persistence:** Real saving and querying of intake forms, profile details, referrals, chat messages, support plans, and follow-ups.
-* **Firebase Storage Upload Flow:** Real file upload to Cloud Storage bucket (if credentials are provided).
-* **Gemini Generative API:** Real server-side extraction and analysis of intake answers using the Google Gemini SDK.
-* **Admin Verification Dashboard:** Real queue system for reviewing, approving, and rejecting provider credentials.
-* **Referral Lifecycle & Messaging:** Real-time updates to referral status and message threads between patients and providers.
-* **Support Plans:** Creating, sharing, and tracking tasks and resources.
+* **Firebase Authentication:** Real signup, login, session state, and role-based permissions.
+* **Firestore Data Persistence:** Real saving, querying, and updating of intake forms, provider profiles, referrals, chat messages, support plans, and follow-up reviews.
+* **Firebase Storage Upload Flow:** Real file upload to Cloud Storage bucket (if configured).
+* **Gemini Server-Side Generation:** Real server-side extraction and navigation-plan synthesis using the Gemini API.
+* **Provider Profile Submission:** Real submission of credential details and document attachments.
+* **Admin Review Workflow:** Real admin-facing credential review page to approve/reject provider roles.
+* **Referral Status Updates:** Real-time transition of referral invites (Pending, Accepted, Waitlisted, Declined).
 
 ### Simulated / Mock Features
-* **Real Clinical Care:** The platform does not deliver medical, psychiatric, or diagnostic care.
-* **Real Credential Verification:** Admin review is a prototype workflow. The system does not verify licenses against real state boards or federal databases (NPI check is a mockup).
-* **Real Insurance & Benefits Checking:** Copay calculators and coverage options are simulation templates.
-* **EHR Integration:** Clinic data is not synced to actual EHR vendor products.
-* **Emergency Response:** If a crisis trigger is found, the system redirects the user to crisis lines but does not call emergency responders automatically.
+* **Real Clinical Care:** The platform is a navigation guide and does not provide clinical therapy or treatment.
+* **Real Credential Verification:** Admin review is a simulation workflow; the platform does not check licenses against real state databases or federal registries.
+* **Real Emergency Response:** The safety scanner redirects users to crisis hotlines but does not dispatch emergency services.
+* **Real Insurance Verification:** Copay and benefit details are calculated based on prototype simulation parameters rather than direct clearinghouse check APIs.
+* **Real EHR Integration:** Referral profiles are not exported to actual clinic Electronic Health Records software.
+* **HIPAA Compliance:** The system is a prototype and does not support regulatory HIPAA-compliant data storage.
 
 ### Feature Implementation Matrix
 * **Firebase Authentication & Firestore:** Fully Implemented.
-* **Firebase Storage Upload:** Implemented with developer fallback (generates mock metadata if storage keys are missing).
-* **Admin Provider Verification:** Fully Implemented (UI and db helpers).
-* **Firestore-based Provider Matching:** Fully Implemented (deterministic matching scores based on location, modality, insurance, and specialties).
-* **Firebase Admin Token Verification:** Planned / Prototype Fallback (the API routes parse authorization headers but bypass cryptographic verification in this release).
+* **Firebase Storage Upload:** Implemented with graceful fallback (generates mock metadata if storage credentials are missing).
+* **Admin Provider Verification:** Fully Implemented.
+* **Firestore-based Provider Matching:** Fully Implemented.
+* **Firebase Admin Token Verification:** Planned / Prototype Fallback (server routes log Bearer headers but bypass cryptographic verification in this pass).
 
 ---
 
@@ -407,7 +419,7 @@ DECORATIVE AI CHATBOTS                MEANINGFUL AI PIPELINES
 │  Paragraphs (High Risk)│                        │
 └────────────────────────┘                        ▼
                                       ┌────────────────────────┐
-                                      │ SOAP Notes / Briefs    │
+                                      │ SOAP-style Briefs      │
                                       │ Outreach Email Draft   │
                                       └────────────────────────┘
 ```
@@ -479,7 +491,7 @@ To transition this prototype toward a production release, we propose the followi
 ### Prerequisites
 * Node.js 20 or later
 
-### Installation
+### Installation & Firebase Configuration
 1. Install dependencies:
    ```bash
    npm install
@@ -502,15 +514,27 @@ To transition this prototype toward a production release, we propose the followi
    NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your-sender-id
    NEXT_PUBLIC_FIREBASE_APP_ID=your-app-id
    ```
-3. Deploy Firestore Security Rules:
+3. **Set up Firebase Storage:**
+   - Open your Firebase Console, navigate to **Storage**, and click **Get Started** to enable the default storage bucket.
+   - Install the Firebase CLI: `npm install -g firebase-tools`
+   - Log in: `firebase login`
+   - Select your project: `firebase use --add`
+   - Deploy the Storage Security Rules:
+     ```bash
+     firebase deploy --only storage
+     ```
+4. **Deploy Firestore Security Rules:**
    ```bash
    firebase deploy --only firestore:rules
    ```
-4. Start the local dev server:
+5. **Start the local dev server:**
    ```bash
    npm run dev
    ```
    Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+> [!WARNING]
+> **Demo Upload Security Boundary:** The file upload flow is intended strictly for prototype evidence checks (e.g. testing the UI of sending credentials to admins). Do not upload real legal, clinical license cards, or personal health records.
 
 ### Simulated Developer Accounts
 In Developer Mode (missing environment configs), log in using these simulated emails (no password required):
@@ -519,7 +543,7 @@ In Developer Mode (missing environment configs), log in using these simulated em
 * **Clinic Org:** `clinic.demo@wisecare.test`
 * **Admin:** `admin.demo@wisecare.test`
 
-To configure a Platform Admin in Firebase Mode, register a user account normal, locate their UID in the Firestore Console, and change their `role` field value in the `users` collection to `"admin"`.
+To configure a Platform Admin in Firebase Mode, register a user account normally, locate their UID in the Firestore Console, and change their `role` field value in the `users` collection to `"admin"`.
 
 ---
 
@@ -527,24 +551,44 @@ To configure a Platform Admin in Firebase Mode, register a user account normal, 
 
 To experience the full capabilities of the Wise Care platform, follow this ideal end-to-end demo walkthrough:
 
-1. **Patient Registration & Onboarding:**
+1. **Patient Authentication:**
    - Register or sign in as a Patient (`patient.demo@wisecare.test`).
-   - Navigate to the **Intake Form** and complete all questionnaire steps.
-2. **AI Navigation Generation:**
-   - Once submitted, view the AI-generated **Care Route** mapping out goals, barriers, and recommendations.
-   - Access the **Care Packet** containing clinician-ready summaries, timelines, and draft outreach emails.
-3. **Provider Matching & Referral:**
-   - Go to the **Provider Search** dashboard. Explore the custom matching scores calculated deterministically.
-   - Click "Connect" to send a referral along with your Care Packet to a matched provider (e.g. `clinician.demo@wisecare.test` or `clinic.demo@wisecare.test`).
-4. **Provider Action:**
-   - Sign out and sign back in as a Solo Clinician or Provider Org.
-   - Open the **Referrals Inbox**. Locate the pending patient referral, review the Care Packet SOAP notes, and click **Accept**, **Waitlist**, or **Decline**.
-5. **Real-time Messaging & Support Planning:**
-   - If accepted, send messages back and forth via the active chat thread.
-   - As a clinician, use the **Support Plan Editor** to generate a custom roadmap (tasks and resource lists) for the patient.
-6. **Patient Follow-Up:**
-   - Sign back in as the Patient. Go to your connections dashboard to see the accepted status.
-   - Check the active Support Plan and mark homework tasks as completed.
-7. **Admin Review Queue:**
-   - Sign in as an Admin (`admin.demo@wisecare.test`).
-   - Navigate to the **Admin Dashboard** and review pending Provider Verification requests. Inspect registration details and update status to **Verified**, **Rejected**, or **Request Info**.
+2. **Structured Intake Form:**
+   - Complete the multi-step questionnaire outlining symptoms, daily life impact, location, and insurance preferences.
+3. **AI Care Route Generation:**
+   - View the generated **Care Route** summarizing safety risk levels, barriers, recommended care modalities, and goals.
+4. **Directory Matching:**
+   - Search matched clinicians/organizations in the directory, seeing compatibility scores calculated directly from Firestore provider records.
+5. **Care Packet Generation:**
+   - Inspect the compiled **Care Packet** containing structured intake briefs (SOAP-style layout) and draft clinician outreach emails.
+6. **Referral Submission:**
+   - Select a provider and click "Connect" to submit a referral along with your Care Packet credentials.
+7. **Provider Response & Management:**
+   - Sign out and log in as a Provider (`clinician.demo@wisecare.test` or `clinic.demo@wisecare.test`).
+   - Open your Inbox, inspect the referred patient brief, and select **Accept**, **Waitlist**, or **Decline** (which updates the referral status in real-time).
+8. **Patient Connections Status Check:**
+   - Sign back in as the Patient to view the connection status update. If accepted, you can chat with the provider and receive support plans.
+9. **Admin Provider Verification:**
+   - Sign in as a Platform Admin (`admin.demo@wisecare.test`).
+   - Open the admin dashboard to review pending provider license documents, updating their verification status to **Verified**, **Rejected**, or **Request Info**.
+
+---
+
+## 13. Developer Fallback & Demonstration Mode
+
+To ensure evaluators and developers can run the entire platform flow out-of-the-box without configuring live API keys or cloud resources, the application features an integrated local fallback system:
+
+### A. Local Storage State Fallback
+If Firebase environment variables are missing from `.env.local`, the application displays a persistent warning banner and automatically routes database operations to the browser's `localStorage`. This includes:
+* Mock persistence of patient intake answers, care routes, and packets.
+* Mock referrals inbox and status transitions.
+* Mock messaging transcripts stored in local memory.
+
+### B. Local AI Mock Generation
+If the Gemini API key is missing, server-side routes return structured mockup responses matching the user's intake details, allowing full end-to-end testing of Care Routes, Packets, and Support Plans.
+
+### C. Client-Side Demo Role Switcher
+To facilitate multi-perspective evaluations in a single browser session, a client-side **Role Switcher** is embedded in the layout sidebar. Evaluators can instantly switch between Patient, Solo Clinician, Clinic Org, and Platform Admin roles to inspect how data updates across profiles (syncing to Firestore if configured, or `localStorage` in fallback mode).
+
+### D. Synthetic Directory Seeding
+A collection of diverse synthetic provider documents representing private therapists, clinics, support groups, and crisis services is seeded into the database (Firestore or local memory) to test compatibility scoring without scraping real directories.
